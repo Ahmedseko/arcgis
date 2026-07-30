@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    Esri's PackageArcGISContents target (from Esri.ArcGISPro.Extensions30) uses an inline
+    CodeTaskFactory task, which only classic .NET Framework MSBuild (bundled with the
+    Visual Studio IDE) supports - `dotnet build` can't run it (MSB4801).
+    Pass -p:SkipEsriPackaging=true to no-op it when building via `dotnet build` /
+    deploy.ps1; full Visual Studio builds don't set that property, so Esri's real
+    target still runs there and packages/registers the .esriAddinX as usual.
+  -->
+  <Target Name="ArcGISInstallOutput" Condition="'$(SkipEsriPackaging)'=='true'" AfterTargets="Build" />
+  <Target Name="PackageArcGISContents" Condition="'$(SkipEsriPackaging)'=='true'" AfterTargets="Build" />
+</Project>

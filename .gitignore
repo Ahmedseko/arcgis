@@ -1,0 +1,5 @@
+bin/
+obj/
+*.esriAddinX
+__pycache__/
+.claude/

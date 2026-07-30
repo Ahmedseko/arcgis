@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArcGIS defaultAssembly="TreeCounterAddin.dll"
+        defaultNamespace="TreeCounterAddin"
+        xmlns="http://schemas.esri.com/DADF/Registry"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://schemas.esri.com/DADF/Registry http://Server/schemas/Desktop/CondensedTypedConfiguration.xsd">
+
+  <AddInInfo id="{27166c1c-05ea-41b4-a975-d5294773acc1}" version="0.1.0" desktopVersion="3.7.0">
+    <Name>Forestry Toolkit</Name>
+    <Description>Detect and count trees from drone orthophotos (ExG + YOLOv8 for oil palm), plus fishnet grid generation for timber cruising. Ported from the QGIS plugin LandTree Analyzer.</Description>
+    <Author>ahmedseko</Author>
+    <Company>ahmedseko</Company>
+    <Date>07/26/2026</Date>
+    <Subject>Raster, Analysis</Subject>
+  </AddInInfo>
+
+  <modules>
+    <insertModule id="TreeCounterAddin_Module" className="TreeCounterModule" autoLoad="true" caption="Forestry Toolkit Module">
+
+      <tabs>
+        <tab id="TreeCounterAddin_Tab" caption="Forestry Toolkit" keytip="T1">
+          <group refID="TreeCounterAddin_Group" />
+          <group refID="TreeCounterAddin_StatusGroup" />
+          <group refID="TreeCounterAddin_HelpGroup" />
+        </tab>
+      </tabs>
+
+      <groups>
+        <group id="TreeCounterAddin_Group" caption="Analysis" appearsOnAddInTab="false" keytip="G1">
+          <button refID="TreeCounterAddin_ShowDockpaneButton" size="large" />
+          <button refID="TreeCounterAddin_DetectShortcutButton" size="middle" />
+          <button refID="TreeCounterAddin_CancelShortcutButton" size="middle" />
+        </group>
+        <group id="TreeCounterAddin_StatusGroup" caption="Status" appearsOnAddInTab="false" keytip="G2">
+          <button refID="TreeCounterAddin_AiStatusLabel" size="middle" />
+          <button refID="TreeCounterAddin_LastResultLabel" size="middle" />
+        </group>
+        <group id="TreeCounterAddin_HelpGroup" caption="Help" appearsOnAddInTab="false" keytip="G3">
+          <button refID="TreeCounterAddin_AboutButton" size="middle" />
+        </group>
+      </groups>
+
+      <controls>
+        <button id="TreeCounterAddin_ShowDockpaneButton"
+                caption="Forestry Toolkit"
+                className="TreeCounterDockpaneShowButton"
+                loadOnClick="true"
+                keytip="B1">
+          <tooltip heading="Forestry Toolkit">
+            Open the tree detection, counting &amp; fishnet panel
+            <disabledText />
+          </tooltip>
+        </button>
+
+        <button id="TreeCounterAddin_DetectShortcutButton"
+                caption="Detect Trees"
+                className="TreeCounterDetectShortcutButton"
+                loadOnClick="true"
+                keytip="B2">
+          <tooltip heading="Detect Trees">
+            Run detection using the settings currently configured in the panel
+            <disabledText>Open the panel and pick a raster layer first</disabledText>
+          </tooltip>
+        </button>
+
+        <button id="TreeCounterAddin_CancelShortcutButton"
+                caption="Cancel"
+                className="TreeCounterCancelShortcutButton"
+                loadOnClick="true"
+                keytip="B3">
+          <tooltip heading="Cancel Detection">
+            Cancel the detection currently running
+            <disabledText>No detection is running</disabledText>
+          </tooltip>
+        </button>
+
+        <button id="TreeCounterAddin_AiStatusLabel"
+                caption="AI: -"
+                className="TreeCounterAiStatusLabel"
+                loadOnClick="true"
+                keytip="B4">
+          <tooltip heading="AI Vision Validation">
+            Currently selected AI provider and model (configured in the panel)
+            <disabledText />
+          </tooltip>
+        </button>
+
+        <button id="TreeCounterAddin_LastResultLabel"
+                caption="Last: -"
+                className="TreeCounterLastResultLabel"
+                loadOnClick="true"
+                keytip="B5">
+          <tooltip heading="Last Detection Result">
+            Tree count and scanned area from the most recent completed detection
+            <disabledText />
+          </tooltip>
+        </button>
+
+        <button id="TreeCounterAddin_AboutButton"
+                caption="About"
+                className="TreeCounterAboutButton"
+                loadOnClick="true"
+                keytip="B6">
+          <tooltip heading="About Forestry Toolkit">
+            Version and usage info
+            <disabledText />
+          </tooltip>
+        </button>
+      </controls>
+
+      <dockPanes>
+        <dockPane id="TreeCounterAddin_Dockpane"
+                  caption="Forestry Toolkit"
+                  className="TreeCounterDockpaneViewModel"
+                  dock="group"
+                  dockWith="esri_core_projectDockPane">
+          <content className="TreeCounterDockpaneView" />
+        </dockPane>
+      </dockPanes>
+
+    </insertModule>
+  </modules>
+</ArcGIS>

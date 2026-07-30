@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>TreeCounterAddin</RootNamespace>
+    <AssemblyName>TreeCounterAddin</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!--
+    Direct HintPath references to ArcGIS Pro's own installed DLLs (CopyLocal=false),
+    not a PackageReference to Esri.ArcGISPro.Extensions30 - matches the pattern in
+    Esri's own community samples (Framework/DockpaneSimple/DockpaneSimple.csproj).
+    The NuGet package only ships ref/ (compile-only) assemblies with no lib/ folder,
+    intended to pair with EnableDynamicLoading's isolated plugin AssemblyLoadContext -
+    but ArcGIS Pro's add-in host doesn't use that pattern; it loads add-ins directly
+    into its own already-running process, where these DLLs are already loaded. Under
+    the PackageReference+EnableDynamicLoading setup the add-in file registered and
+    ArcGIS Pro read it at every startup (confirmed via file access-time and via
+    Get-Process -Module) but the DLL was never actually loaded into the process -
+    no exception, no log, nothing - consistent with silent type-load failure inside
+    an isolated load context with no fallback wiring to Pro's default context.
+  -->
+  <ItemGroup>
+    <Reference Include="ArcGIS.Desktop.Framework">
+      <HintPath>C:\Program Files\ArcGIS\Pro\bin\ArcGIS.Desktop.Framework.dll</HintPath>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Include="ArcGIS.Core">
+      <HintPath>C:\Program Files\ArcGIS\Pro\bin\ArcGIS.Core.dll</HintPath>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Include="ArcGIS.Desktop.Core">
+      <HintPath>C:\Program Files\ArcGIS\Pro\bin\Extensions\Core\ArcGIS.Desktop.Core.dll</HintPath>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+    <Reference Include="ArcGIS.Desktop.Mapping">
+      <HintPath>C:\Program Files\ArcGIS\Pro\bin\Extensions\Mapping\ArcGIS.Desktop.Mapping.dll</HintPath>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Config.daml">
+      <SubType>Designer</SubType>
+    </Content>
+  </ItemGroup>
+
+  <Import Project="C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets" Condition="Exists('C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets')" />
+
+</Project>
