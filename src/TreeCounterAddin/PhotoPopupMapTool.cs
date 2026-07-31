@@ -142,12 +142,11 @@ namespace TreeCounterAddin
 
         private void ShowCard(MapView mapView, string title, string subtitle, byte[] imageBytes, MapPoint anchorPoint)
         {
-            // Compute the initial screen position on the same MCT thread that already has
-            // the map point, then hand off to the UI thread just to build/add the control.
+            // MapToClient/GetViewSize must run on the MCT - the actual ratio math (which
+            // needs the card's own size, only known once it exists) happens on the UI
+            // thread below instead.
             var clientPoint = mapView.MapToClient(anchorPoint);
             var viewSize = mapView.GetViewSize();
-            var xRatio = Clamp01(clientPoint.X / viewSize.Width);
-            var yRatio = Clamp01(clientPoint.Y / viewSize.Height);
 
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
             {
@@ -162,8 +161,22 @@ namespace TreeCounterAddin
                 };
 
                 _anchorMapPoint = anchorPoint;
+                var (xRatio, yRatio) = ToAnchoredRatio(clientPoint, viewSize);
                 AddOverlayAt(mapView, xRatio, yRatio);
             });
+        }
+
+        // MapViewOverlayControl centers the control ON the given ratio position, which put
+        // the photo directly on top of the point it belongs to (confirmed by the user - "foto
+        // muncul di tengah-tengah titik"). Shifting the target up by half the card's own
+        // height (+ a small gap) puts the point just below the card instead, like a callout,
+        // without covering it. Measure() must run before this - DesiredSize is otherwise 0.
+        private (double xRatio, double yRatio) ToAnchoredRatio(System.Windows.Point clientPoint, System.Windows.Size viewSize)
+        {
+            const double gapPixels = 12;
+            _cardControl.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            var adjustedY = clientPoint.Y - (_cardControl.DesiredSize.Height / 2) - gapPixels;
+            return (Clamp01(clientPoint.X / viewSize.Width), Clamp01(adjustedY / viewSize.Height));
         }
 
         // Fires on every pan/zoom/rotate - re-anchors the card to its map point by removing
@@ -179,8 +192,10 @@ namespace TreeCounterAddin
             {
                 var clientPoint = mapView.MapToClient(_anchorMapPoint);
                 var viewSize = mapView.GetViewSize();
-                var xRatio = clientPoint.X / viewSize.Width;
-                var yRatio = clientPoint.Y / viewSize.Height;
+                // Unadjusted ratio, just to decide whether the point itself is still in view -
+                // the actual (offset) placement is computed by ToAnchoredRatio below.
+                var rawXRatio = clientPoint.X / viewSize.Width;
+                var rawYRatio = clientPoint.Y / viewSize.Height;
 
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
                 {
@@ -188,13 +203,14 @@ namespace TreeCounterAddin
 
                     // The point panned out of view - hide the card rather than clamp it to
                     // an edge, since that would misleadingly suggest the point is still there.
-                    if (xRatio < 0 || xRatio > 1 || yRatio < 0 || yRatio > 1)
+                    if (rawXRatio < 0 || rawXRatio > 1 || rawYRatio < 0 || rawYRatio > 1)
                     {
                         RemoveCurrentOverlay(mapView);
                         return;
                     }
 
-                    AddOverlayAt(mapView, Clamp01(xRatio), Clamp01(yRatio));
+                    var (xRatio, yRatio) = ToAnchoredRatio(clientPoint, viewSize);
+                    AddOverlayAt(mapView, xRatio, yRatio);
                 });
             });
         }
