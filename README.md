@@ -48,9 +48,11 @@ backend/                  Python port of qgis_plugin/tree_counter, invoked
   `qgis_plugin/tree_counter/sawit_detector.onnx`.
 
 **Not ported** (out of scope for "count trees"): `detect_land_clearing`
-(cleared-land detection), `compute_heterogeneity_raster` (contrast preview),
-Gemini Vision AI validation (`validator.py`) - these QGIS plugin features are
-separate from the tree-counting flow and weren't requested.
+(cleared-land detection), `compute_heterogeneity_raster` (contrast preview) -
+these QGIS plugin features are separate from the tree-counting flow and
+weren't requested. (AI vision validation *was* ported, unlike the note that
+used to be here - see `backend/validator.py` and the Settings tab's "AI
+Vision Validation" section.)
 
 ## Features & Usage
 
