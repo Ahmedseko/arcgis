@@ -43,12 +43,28 @@
       <HintPath>C:\Program Files\ArcGIS\Pro\bin\Extensions\Mapping\ArcGIS.Desktop.Mapping.dll</HintPath>
       <CopyLocal>false</CopyLocal>
     </Reference>
+    <!--
+      ArcGIS.Desktop.Mapping.MapTool (the base class for custom interactive map-click
+      tools, per Esri's ProGuide-MapView-Interaction) is physically defined in THIS
+      assembly, not ArcGIS.Desktop.Mapping.dll above, despite being in the
+      "ArcGIS.Desktop.Mapping" namespace - confirmed by scanning every ArcGIS Pro DLL's
+      type metadata directly for a TypeDefinition named "MapTool" after the compiler
+      failed to resolve it against the four references already listed here.
+    -->
+    <Reference Include="ArcGIS.Desktop.Extensions">
+      <HintPath>C:\Program Files\ArcGIS\Pro\bin\Extensions\DesktopExtensions\ArcGIS.Desktop.Extensions.dll</HintPath>
+      <CopyLocal>false</CopyLocal>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Config.daml">
       <SubType>Designer</SubType>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Tesseract" Version="5.2.0" />
   </ItemGroup>
 
   <Import Project="C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets" Condition="Exists('C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets')" />

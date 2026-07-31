@@ -30,6 +30,7 @@
           <button refID="TreeCounterAddin_ShowDockpaneButton" size="large" />
           <button refID="TreeCounterAddin_DetectShortcutButton" size="middle" />
           <button refID="TreeCounterAddin_CancelShortcutButton" size="middle" />
+          <tool refID="TreeCounterAddin_PhotoPopupTool" size="middle" />
         </group>
         <group id="TreeCounterAddin_StatusGroup" caption="Status" appearsOnAddInTab="false" keytip="G2">
           <button refID="TreeCounterAddin_AiStatusLabel" size="middle" />
@@ -106,6 +107,18 @@
             <disabledText />
           </tooltip>
         </button>
+
+        <tool id="TreeCounterAddin_PhotoPopupTool"
+              caption="Photo Popup"
+              className="PhotoPopupMapTool"
+              loadOnClick="true"
+              condition="esri_mapping_mapPane"
+              keytip="B7">
+          <tooltip heading="Photo Popup Tool">
+            Click a point with an attached photo (Geotagged Field Photos or Photo Coordinate OCR) to show it in a floating card
+            <disabledText />
+          </tooltip>
+        </tool>
       </controls>
 
       <dockPanes>

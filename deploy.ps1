@@ -57,6 +57,11 @@ Get-ChildItem (Join-Path $PSScriptRoot "backend") -File |
 # resolved at runtime via AppDomain.CurrentDomain.BaseDirectory, not a repo-relative path.
 Copy-Item (Join-Path $proj "Templates") -Destination $installDir -Recurse
 
+# tessdata/ (Tesseract OCR language data for Photo Coordinate OCR) - same reasoning as
+# Templates/ above. The Tesseract.dll + native x64/x86 runtime DLLs themselves are already
+# covered by the "$outDir\*" copy above (NuGet places them straight in the build output).
+Copy-Item (Join-Path $proj "tessdata") -Destination $installDir -Recurse
+
 Compress-Archive -Path (Join-Path $staging "*") -DestinationPath $zipPath
 Remove-Item $staging -Recurse -Force
 Write-Host "Packaged: $zipPath"
