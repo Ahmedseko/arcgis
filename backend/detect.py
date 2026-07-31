@@ -11,11 +11,20 @@ Called by TreeCounterAddin/PythonBackendService.cs as:
     python detect.py --raster <path> --profile "Natural Forest|Oil Palm Plantation" \
         --output-fc <feature class path> --summary <json path> \
         [--sigma N] [--exg-threshold N] [--min-smooth N] [--conf-threshold N] \
+        [--exclude-cleared] \
         [--ai-provider gemini|openai|claude] [--api-key KEY] [--ai-model NAME]
 
 Writes the detected points to --output-fc (created fresh, same spatial
 reference as --raster) and a JSON summary to --summary:
-    {"tree_count": int, "output_fc": str}
+    {"tree_count": int, "output_fc": str, "area_ha": float, "filtered_cleared_count": int}
+
+--exclude-cleared reuses land_clearing.build_cleared_mask (see that module) to drop any
+candidate whose pixel falls on cleared/bare ground - added after visual validation
+against a real orthophoto (2026-07-31) showed false-positive points on bare
+soil/roads that pass the ExG vegetation threshold on their own (small residual
+weeds/soil-color artifacts). Roughly doubles run time (a second full raster
+scan) since it's a real accuracy fix, not a free one - left as an opt-in
+checkbox in the add-in rather than always-on.
 
 Algorithm: Natural Forest always uses the ExG + Gaussian matched filter
 detector (detector.detect_trees). Oil Palm Plantation uses the local YOLOv8n
@@ -40,6 +49,9 @@ from detector import PROFILES, detect_trees
 from raster_io import RasterInfo
 
 PROFILE_MODE = {"Natural Forest": "forest", "Oil Palm Plantation": "palm"}
+# See the --exclude-cleared filtering block in detect() for why this differs from
+# land_clearing.DEFAULT_EXG_THRESHOLD (18).
+CLEARED_FILTER_EXG_THRESHOLD = 30
 DEFAULT_MODEL_BY_PROVIDER = {
     "gemini": "gemini-3.5-flash",
     "openai": "gpt-4o-mini",
@@ -73,7 +85,8 @@ def _write_feature_class(trees, raster_path, output_fc):
 
 
 def detect(raster_path: str, profile: str, sigma=None, exg_threshold=None,
-           min_smooth=None, conf_threshold=0.25, progress_cb=None, stage_cb=None,
+           min_smooth=None, conf_threshold=0.25, exclude_cleared_land=False,
+           progress_cb=None, stage_cb=None,
            ai_provider=None, api_key=None, ai_model=None) -> tuple:
     if not arcpy.Exists(raster_path):
         raise FileNotFoundError(f"Raster not found: {raster_path}")
@@ -84,11 +97,16 @@ def detect(raster_path: str, profile: str, sigma=None, exg_threshold=None,
     exg_threshold = defaults["exg_threshold"] if exg_threshold is None else exg_threshold
     min_smooth = defaults["min_smooth"] if min_smooth is None else min_smooth
 
-    # Detection gets the full 0-100 range normally; with AI validation on
-    # top, detection is rescaled into 0-85 and validation fills 85-100.
+    # Detection normally gets the full 0-100 range. Each optional stage after it
+    # (cleared-land filtering, AI validation) claims a slice off the end instead - up to
+    # three stages sharing 0-100 between them. AI validation's own 85-100 slice is
+    # unchanged from before this option existed, on purpose (its progress math didn't need
+    # to move just because a new option now sits earlier in the pipeline).
+    extra_stages = int(bool(exclude_cleared_land)) + int(bool(api_key))
+    detect_ceiling = 100 if extra_stages == 0 else (85 if extra_stages == 1 else 60)
     detect_progress = progress_cb
-    if api_key and progress_cb:
-        detect_progress = lambda p: progress_cb(int(p * 0.85))
+    if progress_cb and extra_stages:
+        detect_progress = lambda p: progress_cb(int(p * detect_ceiling / 100))
 
     if stage_cb:
         stage_cb("Detecting trees...")
@@ -107,6 +125,28 @@ def detect(raster_path: str, profile: str, sigma=None, exg_threshold=None,
             raster_path, sigma_px=sigma, exg_threshold=exg_threshold,
             min_smooth=min_smooth, mode=mode, progress_cb=detect_progress)
 
+    filtered_cleared_count = 0
+    if exclude_cleared_land:
+        from land_clearing import build_cleared_mask
+        if stage_cb:
+            stage_cb("Filtering out points on cleared/bare ground...")
+        clearing_progress = (lambda p: progress_cb(detect_ceiling + int(p * (85 - detect_ceiling) / 100))) if progress_cb else None
+        # Deliberately NOT land_clearing.DEFAULT_EXG_THRESHOLD (18) - that's the same
+        # value the tree detector itself uses as its OWN vegetation cutoff, which makes
+        # the two checks structurally near-mutually-exclusive: a point the tree detector
+        # accepted (exg > 18 at its refined centroid) can almost never also satisfy
+        # "cleared" (exg < 18) at that same pixel. Confirmed empirically (2026-07-31):
+        # only 3 of 7369 points got filtered this way on a real orthophoto with visibly
+        # many false positives in open areas. A meaningfully higher threshold here gives
+        # real overlap room - a point can be real "vegetation" by the tree detector's
+        # own (lower) bar while still reading as "basically bare" by this stricter one.
+        mask, _ = build_cleared_mask(raster_path, exg_threshold=CLEARED_FILTER_EXG_THRESHOLD, progress_cb=clearing_progress)
+        before = len(trees)
+        # 'py'/'px' are already absolute pixel row/col in the full raster (see
+        # detector.detect_trees), same indexing the mask uses.
+        trees = [t for t in trees if mask[t['py'], t['px']] == 0]
+        filtered_cleared_count = before - len(trees)
+
     if api_key:
         from raster_io import load_rgb
         from validator import validate_trees
@@ -120,7 +160,9 @@ def detect(raster_path: str, profile: str, sigma=None, exg_threshold=None,
             rd, trees, api_key, sigma_px=sigma, model=model,
             profile=mode, provider=provider, progress_cb=validate_progress)
 
-    return trees, mode
+    if progress_cb:
+        progress_cb(100)
+    return trees, mode, filtered_cleared_count
 
 
 def main() -> int:
@@ -133,16 +175,18 @@ def main() -> int:
     parser.add_argument("--exg-threshold", type=float, default=None)
     parser.add_argument("--min-smooth", type=float, default=None)
     parser.add_argument("--conf-threshold", type=float, default=0.25)
+    parser.add_argument("--exclude-cleared", action="store_true",
+                         help="Drop candidates that fall on cleared/bare ground (see land_clearing.py) - roughly doubles run time")
     parser.add_argument("--ai-provider", choices=list(DEFAULT_MODEL_BY_PROVIDER), default=None)
     parser.add_argument("--api-key", default=None)
     parser.add_argument("--ai-model", default=None)
     args = parser.parse_args()
 
     try:
-        trees, _ = detect(
+        trees, _, filtered_cleared_count = detect(
             args.raster, args.profile, sigma=args.sigma,
             exg_threshold=args.exg_threshold, min_smooth=args.min_smooth,
-            conf_threshold=args.conf_threshold,
+            conf_threshold=args.conf_threshold, exclude_cleared_land=args.exclude_cleared,
             ai_provider=args.ai_provider, api_key=args.api_key, ai_model=args.ai_model,
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True),
             stage_cb=lambda s: print(f"STAGE {s}", flush=True),
@@ -157,7 +201,10 @@ def main() -> int:
         return 1
 
     with open(args.summary, "w", encoding="utf-8") as f:
-        json.dump({"tree_count": len(trees), "output_fc": output_fc, "area_ha": area_ha}, f)
+        json.dump({
+            "tree_count": len(trees), "output_fc": output_fc, "area_ha": area_ha,
+            "filtered_cleared_count": filtered_cleared_count,
+        }, f)
     return 0
 
 

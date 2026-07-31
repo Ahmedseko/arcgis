@@ -36,14 +36,15 @@ DEFAULT_EXG_THRESHOLD = 18
 DEFAULT_SMOOTH_PX = 3
 
 
-def detect_land_clearing(raster_path, output_mask_raster, exg_threshold=DEFAULT_EXG_THRESHOLD,
-                          smooth_px=DEFAULT_SMOOTH_PX, fill_holes=True,
-                          block_size=3000, overlap=150, progress_cb=None):
+def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_px=DEFAULT_SMOOTH_PX,
+                        fill_holes=True, block_size=3000, overlap=150, progress_cb=None):
     """
-    Writes a single-band raster to output_mask_raster (same extent/spatial reference as
-    raster_path): 1 = cleared/bare ground, NoData everywhere else (so
-    conversion.RasterToPolygon in detect_clearing.py only ever vectorizes the cleared
-    class, with nothing else to filter out afterward). Returns output_mask_raster.
+    Returns (mask, info): mask is a full-raster-size uint8 numpy array (1 = cleared/bare
+    ground, indexed [row, col] same as detector.detect_trees' 'py'/'px'), info is the
+    RasterInfo. Split out from detect_land_clearing (which additionally writes this to an
+    arcpy raster + vectorizes it) so detect.py can reuse just the mask, in-memory, to
+    filter out tree candidates that land on bare ground - without needing a raster/
+    feature class round trip for that.
     """
     info = RasterInfo(raster_path)
     H, W = info.H, info.W
@@ -84,10 +85,24 @@ def detect_land_clearing(raster_path, output_mask_raster, exg_threshold=DEFAULT_
             progress_cb(int(block_num / total_blocks * 80))
         y += block_size
 
-    lower_left = arcpy.Point(info.xmin, info.ymax - H * info.px_size)
+    if progress_cb:
+        progress_cb(90)
+    return mask, info
+
+
+def detect_land_clearing(raster_path, output_mask_raster, exg_threshold=DEFAULT_EXG_THRESHOLD,
+                          smooth_px=DEFAULT_SMOOTH_PX, fill_holes=True,
+                          block_size=3000, overlap=150, progress_cb=None):
+    """
+    Writes a single-band raster to output_mask_raster (same extent/spatial reference as
+    raster_path): 1 = cleared/bare ground, NoData everywhere else (so
+    conversion.RasterToPolygon in detect_clearing.py only ever vectorizes the cleared
+    class, with nothing else to filter out afterward). Returns output_mask_raster.
+    """
+    mask, info = build_cleared_mask(raster_path, exg_threshold, smooth_px, fill_holes,
+                                     block_size, overlap, progress_cb)
+    lower_left = arcpy.Point(info.xmin, info.ymax - info.H * info.px_size)
     raster = arcpy.NumPyArrayToRaster(mask, lower_left, info.px_size, info.px_size, value_to_nodata=0)
     raster.save(output_mask_raster)
     arcpy.management.DefineProjection(output_mask_raster, arcpy.Raster(raster_path).spatialReference)
-    if progress_cb:
-        progress_cb(90)
     return output_mask_raster

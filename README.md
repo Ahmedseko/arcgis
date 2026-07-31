@@ -123,7 +123,12 @@ status line shows "Cancelled."
   parameters are on the **Settings** tab), click **Detect Trees**. Runs the
   ported ExG/YOLO pipeline as a background subprocess - safe to switch to a
   different map while it runs. Result loads as a point layer (green =
-  forest, red = oil palm). *Cancel: yes.*
+  forest, red = oil palm). The **"Exclude cleared/bare ground"** checkbox
+  (on by default) drops candidates that land on bare soil/roads/open
+  ground - added after visual validation against a real orthophoto showed
+  false positives there; it roughly doubles run time (a second full raster
+  scan), so turn it off if you've already confirmed it's not needed for a
+  given site. *Cancel: yes.*
 - **Land Clearing Detection** - the opposite of Tree Detection: flags
   bare/cleared ground (low vegetation greenness) instead of tree crowns,
   ported from the same QGIS plugin's `detect_land_clearing`. Pick a raster
@@ -272,7 +277,16 @@ in the DockPane.
   (54150x36052 px, 4-band, ~6.3 GB, "Natural Forest" profile) via direct CLI
   run of `detect.py` - completed without error/memory issues, 7,369 trees
   over ~660 ha. `detect_clearing.py` confirmed working against the same
-  orthophoto too - 389 cleared/bare-ground polygons, ~30.7 ha total. Neither
-  has yet been run from the ArcGIS Pro UI itself for visual validation
-  (whether the points/polygons actually line up with tree crowns/bare
-  ground in the imagery).
+  orthophoto too - 389 cleared/bare-ground polygons, ~30.7 ha total.
+- Visual validation against that same real orthophoto (2026-07-31, from the
+  ArcGIS Pro UI) found real accuracy issues, not just "does it run without
+  crashing": (1) false-positive points on bare/cleared ground - partially
+  addressed by the "Exclude cleared/bare ground" option + a stricter
+  `min_density` (see `detector.py`/`detect.py`; reduced 7,369 -> 7,294
+  points, 36 explicitly filtered as on cleared ground vs. only 3 before the
+  threshold fix), (2) one real tree crown sometimes split into multiple
+  points (Sigma likely too small for that crown's actual size), (3) many
+  real crowns missed entirely, (4) false positives on visibly
+  blurred/stitching-artifact regions of the orthomosaic. (2)-(4) are still
+  open - Sigma/threshold recalibration and/or a data-quality filter for
+  bad image regions would need their own round of real-data testing.

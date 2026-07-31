@@ -219,6 +219,9 @@
                                 <TextBlock Text="Detection profile" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" Margin="0,0,0,8"/>
 
+                                <CheckBox Content="Exclude cleared/bare ground (recommended, roughly doubles run time)"
+                                          IsChecked="{Binding ExcludeClearedLand}" Margin="0,0,0,8"/>
+
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="Detect Trees" Command="{Binding RunDetectionCommand}" Style="{StaticResource ActionButton}"/>
                                     <Button Content="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"

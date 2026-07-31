@@ -179,6 +179,19 @@ namespace TreeCounterAddin
             set => SetProperty(ref _lastAreaHa, value);
         }
 
+        // Added after visual validation against a real orthophoto (2026-07-31) showed
+        // false-positive points on bare soil/roads (small residual weeds/soil-color
+        // artifacts pass the ExG vegetation threshold on their own). Reuses
+        // land_clearing.py's mask scan to drop them - defaults on since it's a real
+        // accuracy fix, but it's a second full raster scan (roughly doubles run time), so
+        // it's left overridable rather than hardcoded.
+        private bool _excludeClearedLand = true;
+        public bool ExcludeClearedLand
+        {
+            get => _excludeClearedLand;
+            set => SetProperty(ref _excludeClearedLand, value);
+        }
+
         public ICommand RunDetectionCommand => new RelayCommand(async () => await RunDetectionAsync(), () => !IsRunning && SelectedRasterLayer != null);
         public ICommand CancelCommand => new RelayCommand(() => _runCts?.Cancel(), () => IsRunning);
         public ICommand TestKeyCommand => new RelayCommand(async () => await TestKeyAsync(), () => !IsTestingKey && !string.IsNullOrWhiteSpace(ApiKey));
@@ -227,6 +240,7 @@ namespace TreeCounterAddin
 
                 var request = new DetectionRequest(
                     rasterPath, SelectedProfile, outputFc, Sigma, ExgThreshold, MinSmooth,
+                    ExcludeClearedLand: ExcludeClearedLand,
                     Provider: string.IsNullOrWhiteSpace(ApiKey) ? null : SelectedProvider.ToLowerInvariant(),
                     ApiKey: string.IsNullOrWhiteSpace(ApiKey) ? null : ApiKey,
                     Model: string.IsNullOrWhiteSpace(ApiKey) ? null : SelectedModel);
@@ -247,7 +261,8 @@ namespace TreeCounterAddin
                     await AddResultLayerAsync(map, result.OutputFc, fcName);
                     LastTreeCount = result.TreeCount;
                     LastAreaHa = result.AreaHa;
-                    StatusText = $"Done: {result.TreeCount} trees detected across {result.AreaHa:F1} ha scanned.";
+                    StatusText = $"Done: {result.TreeCount} trees detected across {result.AreaHa:F1} ha scanned." +
+                        (result.FilteredClearedCount > 0 ? $" ({result.FilteredClearedCount} false positive(s) on cleared ground filtered out.)" : "");
                 }
                 else
                 {

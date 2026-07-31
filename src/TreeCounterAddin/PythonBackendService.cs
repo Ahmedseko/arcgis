@@ -10,10 +10,10 @@ namespace TreeCounterAddin
 {
     internal record DetectionRequest(
         string RasterPath, string Profile, string OutputFc,
-        int Sigma, double ExgThreshold, double MinSmooth,
+        int Sigma, double ExgThreshold, double MinSmooth, bool ExcludeClearedLand = false,
         string Provider = null, string ApiKey = null, string Model = null);
 
-    internal record DetectionResult(bool Success, bool Cancelled, int TreeCount, string OutputFc, string ErrorMessage, double AreaHa = 0);
+    internal record DetectionResult(bool Success, bool Cancelled, int TreeCount, string OutputFc, string ErrorMessage, double AreaHa = 0, int FilteredClearedCount = 0);
 
     internal record LandClearingRequest(
         string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinAreaM2, string ExcludeFc = null);
@@ -70,6 +70,10 @@ namespace TreeCounterAddin
             psi.ArgumentList.Add("--sigma"); psi.ArgumentList.Add(request.Sigma.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--exg-threshold"); psi.ArgumentList.Add(request.ExgThreshold.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--min-smooth"); psi.ArgumentList.Add(request.MinSmooth.ToString(CultureInfo.InvariantCulture));
+            if (request.ExcludeClearedLand)
+            {
+                psi.ArgumentList.Add("--exclude-cleared");
+            }
             if (!string.IsNullOrWhiteSpace(request.ApiKey))
             {
                 psi.ArgumentList.Add("--ai-provider"); psi.ArgumentList.Add(request.Provider ?? "gemini");
@@ -125,7 +129,8 @@ namespace TreeCounterAddin
                     root.GetProperty("tree_count").GetInt32(),
                     root.GetProperty("output_fc").GetString(),
                     null,
-                    root.GetProperty("area_ha").GetDouble());
+                    root.GetProperty("area_ha").GetDouble(),
+                    root.TryGetProperty("filtered_cleared_count", out var fc) ? fc.GetInt32() : 0);
             }
             catch (Exception ex)
             {

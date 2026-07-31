@@ -20,7 +20,13 @@ from raster_io import RasterInfo, read_block
 REFERENCE_GSD_M = 0.05
 
 PROFILES = {
-    'forest': dict(sigma_px=75, exg_threshold=18, min_smooth=10, min_density=0.45, extra_scales=[], refine_radius=None),
+    # forest's min_density raised 0.45 -> 0.6 after visual validation against a real
+    # orthophoto (2026-07-31) showed many false-positive points on sparse
+    # weeds/regrowth clumps inside otherwise-cleared/open areas - 0.45 wasn't a high
+    # enough vegetation-density bar around the point to reliably tell those apart from
+    # real, denser tree canopy. Tune further if this turns out to also cut real
+    # sparse-forest-edge trees too aggressively.
+    'forest': dict(sigma_px=75, exg_threshold=18, min_smooth=10, min_density=0.6, extra_scales=[], refine_radius=None),
     'palm':   dict(sigma_px=20, exg_threshold=10, min_smooth=30, min_density=0.0,  extra_scales=[12], refine_radius=20),
 }
 
