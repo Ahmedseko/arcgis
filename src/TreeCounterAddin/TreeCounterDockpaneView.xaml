@@ -239,6 +239,40 @@
                             </StackPanel>
                         </Expander>
 
+                        <Expander Header="Land Clearing Detection" Style="{StaticResource SectionExpander}">
+                            <StackPanel Style="{StaticResource SectionContent}">
+                                <TextBlock Text="Opposite of tree detection - flags bare/cleared ground (low vegetation greenness) instead of tree crowns. Optionally exclude an already-known area (e.g. previously harvested) so results only show new clearings."
+                                           Style="{StaticResource HintLine}"/>
+
+                                <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedLandClearingRasterLayer}" Margin="0,0,0,8"/>
+
+                                <TextBlock Text="Exclude area layer (optional)" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding PolygonLayers}" SelectedItem="{Binding SelectedExcludeAreaLayer}" Margin="0,0,0,8"/>
+
+                                <TextBlock Text="Minimum area (hectares)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding MinClearingAreaHa}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Detect Clearing" Command="{Binding DetectLandClearingCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="Cancel" Command="{Binding CancelLandClearingCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                            Visibility="{Binding IsDetectingLandClearing, Converter={StaticResource BoolToVis}}"/>
+                                </StackPanel>
+
+                                <Grid Margin="0,8,0,0" Visibility="{Binding IsDetectingLandClearing, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="36"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ProgressBar Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding LandClearingProgress}" Height="14"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding LandClearingProgress, StringFormat={}{0}%}"
+                                               HorizontalAlignment="Right" Margin="6,0,0,0" FontSize="11" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <TextBlock Text="{Binding LandClearingStatus}" Style="{StaticResource StatusLine}"/>
+                            </StackPanel>
+                        </Expander>
+
                         <Expander Header="Sliver Polygon Detection" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
                                 <TextBlock Text="Reads every polygon's area and shape first, then auto-flags whatever is far smaller or far thinner/more elongated than typical for this layer - no manual threshold needed. Works on fishnet/grid output or a raw boundary layer."

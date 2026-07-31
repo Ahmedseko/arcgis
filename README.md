@@ -46,13 +46,24 @@ backend/                  Python port of qgis_plugin/tree_counter, invoked
   writes results to a feature class (`arcpy.da.InsertCursor`) + a JSON summary.
 - `backend/sawit_detector.onnx` - YOLOv8n model, copied from
   `qgis_plugin/tree_counter/sawit_detector.onnx`.
+- `backend/land_clearing.py` - port of `detect_land_clearing` (same ExG math,
+  inverted: low vegetation greenness = bare/cleared ground). Writes a 0/1
+  mask *raster* instead of the QGIS original's GDAL/OGR polygon WKT output -
+  this add-in doesn't depend on GDAL/OGR (see `raster_io.py`'s own comment),
+  so vectorization uses `conversion.RasterToPolygon` instead (in
+  `detect_clearing.py`). Chunked/blocked like `detector.detect_trees`, unlike
+  the QGIS original (which reads the whole raster at once).
+- `backend/detect_clearing.py` - CLI entry point for land clearing detection:
+  runs the mask scan, vectorizes it, filters by minimum area, optionally
+  erases an "already cleared" exclude area, writes the result + JSON summary.
 
-**Not ported** (out of scope for "count trees"): `detect_land_clearing`
-(cleared-land detection), `compute_heterogeneity_raster` (contrast preview) -
-these QGIS plugin features are separate from the tree-counting flow and
-weren't requested. (AI vision validation *was* ported, unlike the note that
-used to be here - see `backend/validator.py` and the Settings tab's "AI
-Vision Validation" section.)
+**Not ported** (out of scope for "count trees"): `compute_heterogeneity_raster`
+(contrast preview) - a QGIS plugin helper for manually picking where to draw
+an exclude mask before running `detect_land_clearing`, separate from the
+detection itself and not requested. (`detect_land_clearing` and AI vision
+validation *were* both ported, unlike an older note that used to say
+otherwise - see `backend/land_clearing.py`, `backend/validator.py`, and the
+Analyze/Settings tabs.)
 
 ## Features & Usage
 
@@ -113,6 +124,15 @@ status line shows "Cancelled."
   ported ExG/YOLO pipeline as a background subprocess - safe to switch to a
   different map while it runs. Result loads as a point layer (green =
   forest, red = oil palm). *Cancel: yes.*
+- **Land Clearing Detection** - the opposite of Tree Detection: flags
+  bare/cleared ground (low vegetation greenness) instead of tree crowns,
+  ported from the same QGIS plugin's `detect_land_clearing`. Pick a raster
+  layer, optionally an "exclude area" polygon layer (e.g. area already known
+  to be cleared/harvested, so results only show *new* clearings), a minimum
+  area in hectares, click **Detect Clearing**. Runs as a background Python
+  subprocess (same as Tree Detection), safe against large orthophotos - the
+  scan itself is chunked/blocked so memory stays bounded regardless of raster
+  size. *Cancel: yes.*
 - **Sliver Polygon Detection** - pick a polygon layer, click **Detect
   Slivers**. Auto-calibrates against that layer's own median part size/shape
   (no fixed threshold to tune) and selects the flagged slivers on the map.
@@ -231,8 +251,9 @@ Tests (run with Pro's bundled python, both already passing in this
 environment):
 
 ```powershell
-& "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_detect.py         # CLI smoke test (argparse, exit codes)
-& "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_pipeline_e2e.py    # e2e: synthetic raster -> detect_trees -> detected positions
+& "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_detect.py             # CLI smoke test (argparse, exit codes)
+& "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_pipeline_e2e.py        # e2e: synthetic raster -> detect_trees -> detected positions
+& "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_land_clearing_e2e.py   # e2e: synthetic raster -> detect_land_clearing -> mask matches planted patch
 ```
 
 ## Status (Tree Detection / Python backend)
@@ -250,5 +271,8 @@ in the DockPane.
 - Backend pipeline confirmed working against a real large drone orthophoto
   (54150x36052 px, 4-band, ~6.3 GB, "Natural Forest" profile) via direct CLI
   run of `detect.py` - completed without error/memory issues, 7,369 trees
-  over ~660 ha. Not yet run from the ArcGIS Pro UI itself against a real TIF
-  for visual validation (whether the points actually land on tree crowns).
+  over ~660 ha. `detect_clearing.py` confirmed working against the same
+  orthophoto too - 389 cleared/bare-ground polygons, ~30.7 ha total. Neither
+  has yet been run from the ArcGIS Pro UI itself for visual validation
+  (whether the points/polygons actually line up with tree crowns/bare
+  ground in the imagery).
