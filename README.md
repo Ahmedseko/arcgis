@@ -245,6 +245,8 @@ in the DockPane.
   QGIS plugin - `compare_detections()` is already ported in
   `backend/detector.py` (generic function, no extra porting needed), but
   there's no UI for it in the DockPane yet. Add it if actually needed.
-- Not yet tested against a real drone orthophoto (only a synthetic raster +
-  smoke test so far) - run it from the ArcGIS Pro UI against a real TIF for
-  visual validation.
+- Backend pipeline confirmed working against a real large drone orthophoto
+  (54150x36052 px, 4-band, ~6.3 GB, "Natural Forest" profile) via direct CLI
+  run of `detect.py` - completed without error/memory issues, 7,369 trees
+  over ~660 ha. Not yet run from the ArcGIS Pro UI itself against a real TIF
+  for visual validation (whether the points actually land on tree crowns).
