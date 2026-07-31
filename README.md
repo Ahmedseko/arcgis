@@ -1,8 +1,11 @@
 # Forestry Toolkit (ArcGIS Pro Add-in)
 
-Tree detection/counting ported from the QGIS plugin `qgis_plugin/tree_counter`
-(LandTree Analyzer) to ArcGIS Pro, using the ArcGIS Pro SDK for .NET, plus a
-fishnet grid generator (clipped to a planning polygon) for timber cruising.
+An ArcGIS Pro dockpane + ribbon tab covering the common steps of a timber
+cruising/forestry workflow: tree detection from drone orthophotos (ported from
+the QGIS plugin `qgis_plugin/tree_counter`, LandTree Analyzer), fishnet grid
+generation, field-data import (Excel, geotagged photos, photo-watermark OCR),
+sliver-polygon/biomass/slope/riparian-buffer analysis, a cruising summary
+report, GPX export, and a custom photo popup tool.
 
 ## Architecture
 
@@ -48,6 +51,119 @@ backend/                  Python port of qgis_plugin/tree_counter, invoked
 (cleared-land detection), `compute_heterogeneity_raster` (contrast preview),
 Gemini Vision AI validation (`validator.py`) - these QGIS plugin features are
 separate from the tree-counting flow and weren't requested.
+
+## Features & Usage
+
+Open the panel via the **Forestry Toolkit** ribbon tab -> **Forestry Toolkit**
+button (large, left). It has 4 tabs: **Prepare**, **Field Data**, **Analyze**,
+**Settings**. Every long-running feature shows its progress/result in a status
+line under its own section; click **Refresh** (top of the panel) any time a
+layer you just added doesn't show up in a dropdown yet.
+
+**Cancel**, where available, stops the operation after its *current* step
+finishes (e.g. mid-way through a chain of GP tool calls) - it's cooperative
+cancellation, not an instant kill, so there can be a short delay before the
+status line shows "Cancelled."
+
+### Prepare tab
+
+- **Fishnet Generator** - pick a planning polygon layer, set cell width/height
+  (map units), click **Create Fishnet**. Generates a grid over the polygon's
+  extent and clips it to the polygon's actual shape, with a `Cell_ID` field
+  for referencing cells in the field. *Cancel: yes.*
+- **Export to GPS (GPX)** - pick any point/line/polygon layer, click **Export
+  to GPX...** and choose where to save. Polygon layers get their boundary
+  turned into a line first (GPX has no "filled area" concept). Opens directly
+  in Garmin BaseCamp/Garmin Connect or any GPS device that reads GPX. *Cancel:
+  no (each export is a couple of quick GP calls; not worth the added UI).*
+
+### Field Data tab
+
+- **Import Timber Cruising Excel** - click **Download Template...** first if
+  you don't have the sheet format yet (ships as
+  `Templates/TreeCruisingTemplate.xlsx`); it needs a `TREE DATA` sheet
+  (species, diameter, height, volume, X/Y). Pick the matching coordinate
+  system (Indonesian UTM zones by name, or "Other" to enter a WKID by hand),
+  click **Import Excel...** and choose the file. *Cancel: no (each import is a
+  couple of quick GP calls).*
+- **Geotagged Field Photos** - click **Import Photos...**, pick JPEGs that
+  already have GPS EXIF data (most phone/GPS-camera photos do by default).
+  Creates one point per photo with the photo attached, so clicking the point
+  in ArcGIS Pro's normal pop-up shows/enlarges it. *Cancel: no (reads EXIF
+  tags only, no network/heavy processing).*
+- **Photo Coordinate OCR (no EXIF GPS)** - for photos where the coordinates
+  are burned into the image itself (e.g. a "GPS Map Camera"-style watermark)
+  but EXIF GPS is missing/blank. Pick the watermark format (**UTM Grid** or
+  **Latitude/Longitude**) and, for UTM, a default zone/hemisphere used only if
+  a photo's own zone letter can't be read. Click **Scan Photos...**, pick the
+  JPEGs - this runs fully offline (bundled Tesseract OCR, nothing leaves the
+  machine). A review window then shows every photo's detected X/Y so each one
+  can be checked/corrected/excluded before anything is created; points are
+  only written after clicking **Create Points** in that window. *Cancel: no
+  (OCR runs before the review window opens - close the review window without
+  clicking Create Points to back out instead).*
+
+### Analyze tab
+
+- **Tree Detection** - pick a raster layer and a profile (**Natural Forest**
+  or **Oil Palm Plantation**; advanced sigma/ExG-threshold/min-smooth
+  parameters are on the **Settings** tab), click **Detect Trees**. Runs the
+  ported ExG/YOLO pipeline as a background subprocess - safe to switch to a
+  different map while it runs. Result loads as a point layer (green =
+  forest, red = oil palm). *Cancel: yes.*
+- **Sliver Polygon Detection** - pick a polygon layer, click **Detect
+  Slivers**. Auto-calibrates against that layer's own median part size/shape
+  (no fixed threshold to tune) and selects the flagged slivers on the map.
+  *Cancel: no (a single in-memory scan, no GP tool calls to chain).*
+- **Biomass & Carbon Estimation** - pick a point layer that has a `Volume`
+  field (from an Excel import), click **Estimate**. Uses the wood
+  density/BEF/root-shoot-ratio/carbon-fraction constants on the **Settings**
+  tab (generic tropical-forest defaults - edit them for your species mix/
+  region) and adds per-tree `Biomass_kg`/`Carbon_kg` fields. *Cancel: no (a
+  couple of quick GP calls).*
+- **Slope from DEM** - pick a single-band elevation raster, click **Compute
+  Slope**. Requires a licensed Spatial Analyst extension. Output is
+  classified into forestry accessibility bands (green <=15% easy, yellow
+  15-25% moderate, orange 25-40% difficult, red >40% restricted) instead of a
+  plain grayscale stretch. *Cancel: yes.*
+- **Riparian Buffer Check** - pick a river/stream layer and a planning
+  polygon layer, set the buffer distance (meters - no fixed legal number is
+  assumed, since this varies by regulation/river class), click **Check
+  Buffer**. Buffers the river and intersects it with the plan; if nothing
+  overlaps, no extra layer is added. *Cancel: yes.*
+- **Cruising Summary Report** - pick a point layer with both `Volume` and
+  `Species` fields, click **Generate Report...** and choose where to save.
+  Produces a species x volume summary spreadsheet (sum + count per species).
+  *Cancel: yes.*
+
+### Settings tab
+
+- **Advanced Detection Parameters** - sigma / ExG threshold / min-smooth for
+  Tree Detection; auto-filled per profile, editable per run.
+- **AI Vision Validation** - optional Gemini/OpenAI/Claude API key + model, to
+  validate Tree Detection results. Keys are saved encrypted (DPAPI) per
+  provider, so switching providers doesn't lose the other's key. **Test
+  Key** checks it works before running a full detection.
+- Fishnet cell size, cruising coordinate system, and biomass constants are
+  saved automatically as they're changed (plain JSON, no dialog needed) and
+  restored next time ArcGIS Pro opens.
+
+### Photo Popup (ribbon tool, not in the panel)
+
+A custom map tool for viewing a point's attached photo inline, since ArcGIS
+Pro's native pop-up only shows a hierarchical field list, not the photo
+itself. Click **Photo Popup** in the ribbon's **Analysis** group (next to
+**Detect Trees**), then click a point that has a photo attachment (from
+Geotagged Field Photos or Photo Coordinate OCR) - a floating card with the
+photo appears, anchored to that point (it follows if you pan/zoom, and
+disappears if the point scrolls out of view). Left-click is reserved for this
+while the tool is active, so:
+
+- Pan with **right-click-drag**, zoom with the **scroll wheel** (both work
+  normally).
+- To go back to normal left-click-drag panning/selection, press **Esc** or
+  switch to the **Explore** tool (Map tab -> Navigate group) - ribbon tool
+  buttons aren't on/off toggles, they're "which tool is active right now."
 
 ## Build & Deploy
 
@@ -117,7 +233,7 @@ environment):
 & "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_pipeline_e2e.py    # e2e: synthetic raster -> detect_trees -> detected positions
 ```
 
-## Status
+## Status (Tree Detection / Python backend)
 
 Done: algorithm port (ExG for forest + YOLO for oil palm), feature class
 output + auto-load onto the map with symbology, advanced parameter controls
