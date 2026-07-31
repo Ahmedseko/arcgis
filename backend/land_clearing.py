@@ -35,6 +35,17 @@ from raster_io import RasterInfo, read_block
 DEFAULT_EXG_THRESHOLD = 18
 DEFAULT_SMOOTH_PX = 3
 
+# Denoise/generalize passes, applied once to the FULL assembled mask (not per-block - see
+# below). Repeated small-kernel passes (scipy's own recommended efficient approach) rather
+# than one big structuring element: iterations=N with the default 3x3 cross approximates a
+# radius-N diamond at a fraction of the cost of an actual NxN kernel. At this raster's
+# ~0.058 m/px, ~10-15 iterations generalizes at roughly the 0.6-0.9 m scale - closer to how
+# a person would actually trace a clearing boundary by hand than the raw pixel-exact mask
+# (added after a real result looked "too busy/jagged, not like human digitization" -
+# 2026-07-31).
+OPENING_ITERATIONS = 10  # first: strip small false "cleared" specks inside real vegetation
+CLOSING_ITERATIONS = 15  # then: fill small gaps/holes inside real clearings
+
 
 def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_px=DEFAULT_SMOOTH_PX,
                         fill_holes=True, block_size=3000, overlap=150, progress_cb=None):
@@ -67,12 +78,6 @@ def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_
             exg = ndimage.gaussian_filter(exg, smooth_px)
 
         cleared = valid & (exg < exg_threshold)
-        if fill_holes:
-            # Closes small holes (e.g. a solitary tree left standing in the middle of a
-            # clearing) so clearing polygons come out as one solid area instead of full
-            # of tiny holes - this is about the boundary of the cleared area, not
-            # preserving every individual surviving tree.
-            cleared = ndimage.binary_closing(cleared, iterations=2)
 
         # This block's overlap tail duplicates the start of the next block - same
         # crop-to-core idea detector.detect_trees uses for its point candidates, applied
@@ -82,8 +87,18 @@ def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_
 
         block_num += 1
         if progress_cb:
-            progress_cb(int(block_num / total_blocks * 80))
+            progress_cb(int(block_num / total_blocks * 70))
         y += block_size
+
+    if fill_holes:
+        # Done once on the whole assembled mask instead of per-block: a per-block pass
+        # can't smooth across a block boundary (each block only sees its own slice), and
+        # running it globally is simpler besides - the mask is already small enough (1
+        # byte/px) to hold and process whole.
+        if progress_cb:
+            progress_cb(80)
+        mask = ndimage.binary_opening(mask, iterations=OPENING_ITERATIONS)
+        mask = ndimage.binary_closing(mask, iterations=CLOSING_ITERATIONS).astype(np.uint8)
 
     if progress_cb:
         progress_cb(90)

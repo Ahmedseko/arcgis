@@ -51,8 +51,14 @@ backend/                  Python port of qgis_plugin/tree_counter, invoked
   mask *raster* instead of the QGIS original's GDAL/OGR polygon WKT output -
   this add-in doesn't depend on GDAL/OGR (see `raster_io.py`'s own comment),
   so vectorization uses `conversion.RasterToPolygon` instead (in
-  `detect_clearing.py`). Chunked/blocked like `detector.detect_trees`, unlike
-  the QGIS original (which reads the whole raster at once).
+  `detect_clearing.py`, with `SIMPLIFY` rather than `NO_SIMPLIFY` - the
+  latter traces every raster cell's exact edge, which looked like a jagged
+  "staircase" rather than a human-digitized boundary). Chunked/blocked like
+  `detector.detect_trees`, unlike the QGIS original (which reads the whole
+  raster at once) - except the opening/closing smoothing pass (denoise +
+  generalize the boundary, also added after a real result looked "too busy"),
+  which runs once on the whole assembled mask rather than per-block, since a
+  per-block pass can't smooth across a block boundary anyway.
 - `backend/detect_clearing.py` - CLI entry point for land clearing detection:
   runs the mask scan, vectorizes it, filters by minimum area, optionally
   erases an "already cleared" exclude area, writes the result + JSON summary.
@@ -290,3 +296,9 @@ in the DockPane.
   blurred/stitching-artifact regions of the orthomosaic. (2)-(4) are still
   open - Sigma/threshold recalibration and/or a data-quality filter for
   bad image regions would need their own round of real-data testing.
+- Land Clearing Detection's boundary also looked "too busy/jagged, not like
+  human digitization" on first visual check - fixed with an opening+closing
+  smoothing pass on the mask plus switching `RasterToPolygon` to `SIMPLIFY`
+  (see `land_clearing.py`/`detect_clearing.py`); polygon count on the same
+  real orthophoto dropped from 389 to 317 (small noise fragments removed)
+  while total area stayed essentially the same (~30.7 -> ~30.9 ha).

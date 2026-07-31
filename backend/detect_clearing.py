@@ -51,7 +51,11 @@ def main() -> int:
         # NoData everywhere except the cleared class (see land_clearing.py) - every
         # polygon RasterToPolygon produces here is already a clearing, nothing else to
         # filter out of the raw output by class/value.
-        arcpy.conversion.RasterToPolygon(mask_raster, raw_fc, "NO_SIMPLIFY", "Value")
+        # SIMPLIFY (not NO_SIMPLIFY) - NO_SIMPLIFY traces every raster cell's exact
+        # boundary, which at ~0.06 m/px produces a visibly "staircase"/pixel-jagged
+        # polygon edge instead of a smooth, human-digitization-like boundary (confirmed
+        # against a real result, 2026-07-31).
+        arcpy.conversion.RasterToPolygon(mask_raster, raw_fc, "SIMPLIFY", "Value")
         arcpy.management.Delete(mask_raster)
         print("PROGRESS 92", flush=True)
 
