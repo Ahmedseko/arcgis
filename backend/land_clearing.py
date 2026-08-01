@@ -46,6 +46,17 @@ DEFAULT_SMOOTH_PX = 3
 OPENING_ITERATIONS = 10  # first: strip small false "cleared" specks inside real vegetation
 CLOSING_ITERATIONS = 15  # then: fill small gaps/holes inside real clearings
 
+# ponytail: threshold-per-pixel + morphology is patching jaggedness after the fact, not
+# preventing it. The alternative is OBIA - segment first (superpixels), classify per-object
+# instead of per-pixel, which yields smooth boundaries natively. skimage.segmentation.slic
+# (SLIC) is the portable, non-GEE equivalent of the SNIC algorithm GEE-based OBIA workflows
+# use, and has documented precedent on exactly this kind of data (SLIC-UAV, Wagner et al.
+# 2020, arXiv:2006.06624 - drone RGB orthomosaics over Indonesian forest restoration
+# concessions). Deferred: needs a tiling strategy for gigapixel orthophotos (superpixels
+# split across tile edges, unlike this module's simple row-block overlap-and-crop), so it's
+# a redesign of this module's segmentation step, not a drop-in swap. Revisit if morphological
+# smoothing turns out insufficient in real field testing.
+
 
 def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_px=DEFAULT_SMOOTH_PX,
                         fill_holes=True, block_size=3000, overlap=150, progress_cb=None):
