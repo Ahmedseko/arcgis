@@ -58,7 +58,12 @@ backend/                  Python port of qgis_plugin/tree_counter, invoked
   raster at once) - except the opening/closing smoothing pass (denoise +
   generalize the boundary, also added after a real result looked "too busy"),
   which runs once on the whole assembled mask rather than per-block, since a
-  per-block pass can't smooth across a block boundary anyway.
+  per-block pass can't smooth across a block boundary anyway. Also has an
+  unproven `method="obia"` prototype (`build_cleared_mask_obia`, `--method obia`
+  on the CLI): segments each block into superpixels with `skimage`'s SLIC first
+  and classifies whole segments instead of pixels, aiming for the same smooth-
+  boundary result natively instead of via the opening/closing pass - not yet
+  validated against a real orthophoto, so `method="exg"` stays the default.
 - `backend/detect_clearing.py` - CLI entry point for land clearing detection:
   runs the mask scan, vectorizes it, filters by minimum area, optionally
   erases an "already cleared" exclude area, writes the result + JSON summary.

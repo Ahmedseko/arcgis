@@ -27,6 +27,8 @@ def main() -> int:
     parser.add_argument("--summary", required=True)
     parser.add_argument("--exg-threshold", type=float, default=DEFAULT_EXG_THRESHOLD)
     parser.add_argument("--smooth-px", type=float, default=DEFAULT_SMOOTH_PX)
+    parser.add_argument("--method", choices=["exg", "obia"], default="exg",
+                         help="obia = SLIC-superpixel prototype, see land_clearing.py")
     parser.add_argument("--min-area-m2", type=float, default=100.0)
     parser.add_argument("--exclude-fc", default=None,
                          help="Polygon feature class to erase from results (e.g. already-harvested area)")
@@ -43,7 +45,7 @@ def main() -> int:
         print("STAGE Scanning for cleared/bare ground...", flush=True)
         detect_land_clearing(
             args.raster, mask_raster,
-            exg_threshold=args.exg_threshold, smooth_px=args.smooth_px,
+            exg_threshold=args.exg_threshold, smooth_px=args.smooth_px, method=args.method,
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True),
         )
 

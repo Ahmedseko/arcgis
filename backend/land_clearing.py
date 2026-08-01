@@ -29,6 +29,7 @@ Not ported (skipped for this first pass - add back if actually needed in the fie
 import arcpy
 import numpy as np
 from scipy import ndimage
+from skimage.segmentation import slic
 
 from raster_io import RasterInfo, read_block
 
@@ -52,10 +53,11 @@ CLOSING_ITERATIONS = 15  # then: fill small gaps/holes inside real clearings
 # (SLIC) is the portable, non-GEE equivalent of the SNIC algorithm GEE-based OBIA workflows
 # use, and has documented precedent on exactly this kind of data (SLIC-UAV, Wagner et al.
 # 2020, arXiv:2006.06624 - drone RGB orthomosaics over Indonesian forest restoration
-# concessions). Deferred: needs a tiling strategy for gigapixel orthophotos (superpixels
-# split across tile edges, unlike this module's simple row-block overlap-and-crop), so it's
-# a redesign of this module's segmentation step, not a drop-in swap. Revisit if morphological
-# smoothing turns out insufficient in real field testing.
+# concessions). Prototyped below as build_cleared_mask_obia/method="obia" - still uses this
+# module's simple row-block splitting rather than a real superpixel-aware tiling strategy,
+# so a superpixel straddling a block boundary can still seam; untested against a real
+# gigapixel orthophoto. Promote to the default once that's been checked against a real
+# result the way OPENING/CLOSING_ITERATIONS above were.
 
 
 def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_px=DEFAULT_SMOOTH_PX,
@@ -116,17 +118,81 @@ def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_
     return mask, info
 
 
+DEFAULT_SEGMENT_PX = 20  # ~1.2m at this raster's ~0.058m/px - same generalization scale
+                          # the OPENING/CLOSING_ITERATIONS comment above targets by hand
+
+
+def build_cleared_mask_obia(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
+                             segment_px=DEFAULT_SEGMENT_PX, compactness=10.0,
+                             block_size=3000, overlap=150, progress_cb=None):
+    """
+    OBIA prototype (see the "ponytail:" note above OPENING_ITERATIONS): segments each
+    block into superpixels with skimage's SLIC first, then classifies whole segments by
+    mean ExG instead of thresholding pixel-by-pixel - segment boundaries already follow
+    real color edges, so this is meant to produce a clearing boundary close to
+    build_cleared_mask's post-hoc opening/closing result without a separate smoothing
+    pass. Same row-block splitting as build_cleared_mask, so a superpixel that straddles
+    a block boundary can still show a seam - untested yet against a real gigapixel
+    orthophoto (see the deferred-work note this prototype fulfills).
+    """
+    info = RasterInfo(raster_path)
+    H, W = info.H, info.W
+    mask = np.zeros((H, W), dtype=np.uint8)
+
+    total_blocks = max(1, (H + block_size - 1) // block_size)
+    block_num = 0
+    y = 0
+    while y < H:
+        h = min(block_size + overlap, H - y)
+        rd = read_block(raster_path, info, y, h)
+        r, g, b, valid = rd.r, rd.g, rd.b, rd.valid
+
+        exg = 2.0 * g - r - b
+        image = np.stack([r, g, b], axis=-1) / 255.0
+        n_segments = max(1, (rd.H * rd.W) // (segment_px * segment_px))
+        segments = slic(image, n_segments=n_segments, compactness=compactness,
+                         mask=valid, start_label=0, channel_axis=-1)
+
+        # Per-segment mean ExG via bincount instead of scipy.ndimage.mean/a Python loop -
+        # segments is already a dense 0..num_labels-1 label image (skimage's guarantee),
+        # so a weighted bincount is the vectorized equivalent of a groupby-mean.
+        num_labels = int(segments.max()) + 1
+        sums = np.bincount(segments.ravel(), weights=exg.ravel(), minlength=num_labels)
+        counts = np.bincount(segments.ravel(), minlength=num_labels)
+        cleared_by_label = (sums / np.maximum(counts, 1)) < exg_threshold
+        cleared = cleared_by_label[segments] & valid
+
+        core_h = min(block_size, h)
+        mask[y:y + core_h, :] = cleared[:core_h, :]
+
+        block_num += 1
+        if progress_cb:
+            progress_cb(int(block_num / total_blocks * 90))
+        y += block_size
+
+    if progress_cb:
+        progress_cb(95)
+    return mask, info
+
+
 def detect_land_clearing(raster_path, output_mask_raster, exg_threshold=DEFAULT_EXG_THRESHOLD,
                           smooth_px=DEFAULT_SMOOTH_PX, fill_holes=True,
-                          block_size=3000, overlap=150, progress_cb=None):
+                          block_size=3000, overlap=150, progress_cb=None, method="exg"):
     """
     Writes a single-band raster to output_mask_raster (same extent/spatial reference as
     raster_path): 1 = cleared/bare ground, NoData everywhere else (so
     conversion.RasterToPolygon in detect_clearing.py only ever vectorizes the cleared
     class, with nothing else to filter out afterward). Returns output_mask_raster.
+
+    method="exg" (default) is build_cleared_mask; method="obia" is the SLIC-based
+    build_cleared_mask_obia prototype - see its docstring.
     """
-    mask, info = build_cleared_mask(raster_path, exg_threshold, smooth_px, fill_holes,
-                                     block_size, overlap, progress_cb)
+    if method == "obia":
+        mask, info = build_cleared_mask_obia(raster_path, exg_threshold, block_size=block_size,
+                                              overlap=overlap, progress_cb=progress_cb)
+    else:
+        mask, info = build_cleared_mask(raster_path, exg_threshold, smooth_px, fill_holes,
+                                         block_size, overlap, progress_cb)
     lower_left = arcpy.Point(info.xmin, info.ymax - info.H * info.px_size)
     raster = arcpy.NumPyArrayToRaster(mask, lower_left, info.px_size, info.px_size, value_to_nodata=0)
     raster.save(output_mask_raster)

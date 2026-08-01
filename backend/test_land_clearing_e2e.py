@@ -36,7 +36,7 @@ def _make_synthetic_tif(path):
     arcpy.management.DefineProjection(path, arcpy.SpatialReference(32750))
 
 
-def _assert_mask_matches_patch(mask_path):
+def _assert_mask_matches_patch(mask_path, tolerance=0.02):
     mask = arcpy.RasterToNumPyArray(mask_path, nodata_to_value=0)
     patch = np.zeros((SIZE, SIZE), dtype=bool)
     patch[CLEARED_ROWS, CLEARED_COLS] = True
@@ -46,7 +46,7 @@ def _assert_mask_matches_patch(mask_path):
     # rather than requiring an exact match.
     mismatched = (mask.astype(bool) != patch).sum()
     fraction = mismatched / patch.size
-    assert fraction < 0.02, f"mask differs from planted patch on {fraction:.1%} of pixels"
+    assert fraction < tolerance, f"mask differs from planted patch on {fraction:.1%} of pixels"
 
     # Background well away from the patch (and from the ~15px edge margin the block
     # loop's overlap/crop doesn't touch) must stay unflagged.
@@ -78,7 +78,21 @@ def test_detects_bare_patch_across_multiple_blocks():
         _assert_mask_matches_patch(mask_path)
 
 
+def test_detects_bare_patch_obia():
+    # Superpixel classification isn't pixel-exact at edges the way the ExG method +
+    # morphology is (segments straddling the true boundary vote by majority), so this
+    # allows a looser tolerance than the exg-method tests above.
+    with tempfile.TemporaryDirectory() as tmp:
+        tif_path = os.path.join(tmp, "synthetic.tif")
+        mask_path = os.path.join(tmp, "mask.tif")
+        _make_synthetic_tif(tif_path)
+
+        detect_land_clearing(tif_path, mask_path, exg_threshold=18, method="obia")
+        _assert_mask_matches_patch(mask_path, tolerance=0.08)
+
+
 if __name__ == "__main__":
     test_detects_bare_patch()
     test_detects_bare_patch_across_multiple_blocks()
+    test_detects_bare_patch_obia()
     print("OK")
