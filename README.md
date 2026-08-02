@@ -307,3 +307,16 @@ in the DockPane.
   (see `land_clearing.py`/`detect_clearing.py`); polygon count on the same
   real orthophoto dropped from 389 to 317 (small noise fragments removed)
   while total area stayed essentially the same (~30.7 -> ~30.9 ha).
+- First quantitative accuracy check (2026-08-02) against a real
+  human-digitized ground-truth shapefile (a 1 m/px orthophoto tile + its
+  matching "Land Aktif...Disturb" polygons from `D:\Data Bukaan\Digitasi
+  Juli 2026`): the opening pass above (10 iterations) was trading recall for
+  precision more than intended - 73.1% recall / 92.4% precision (F1 81.6%)
+  vs. 80.0%/77.2% (F1 78.6%) with opening removed entirely. A sweep over
+  opening=0..10 found opening=6 Pareto-dominates the original 10 on this
+  ground truth (76.2% recall / 88.4% precision, F1 81.9% - both metrics
+  better, not a trade-off), now the default in `land_clearing.py`. The
+  QGIS original's `fresh_color` road/river color filter was also ported as
+  an opt-in `--fresh-color`/`--bright-min` CLI flag, but measured worse on
+  this tile (67.9% recall) so stays off by default - a knob for site-by-site
+  tuning against that site's own ground truth, not a universal fix.

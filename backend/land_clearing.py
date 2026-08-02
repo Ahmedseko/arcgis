@@ -39,12 +39,21 @@ DEFAULT_SMOOTH_PX = 3
 # Denoise/generalize passes, applied once to the FULL assembled mask (not per-block - see
 # below). Repeated small-kernel passes (scipy's own recommended efficient approach) rather
 # than one big structuring element: iterations=N with the default 3x3 cross approximates a
-# radius-N diamond at a fraction of the cost of an actual NxN kernel. At this raster's
-# ~0.058 m/px, ~10-15 iterations generalizes at roughly the 0.6-0.9 m scale - closer to how
-# a person would actually trace a clearing boundary by hand than the raw pixel-exact mask
-# (added after a real result looked "too busy/jagged, not like human digitization" -
-# 2026-07-31).
-OPENING_ITERATIONS = 10  # first: strip small false "cleared" specks inside real vegetation
+# radius-N diamond at a fraction of the cost of an actual NxN kernel.
+#
+# OPENING_ITERATIONS was originally 10 (added 2026-07-31 to fix a result that looked "too
+# busy/jagged, not like human digitization") - measured against real human-digitized
+# ground truth on a 1m/px orthophoto tile on 2026-08-02 (see D:\Data Bukaan\Digitasi Juli
+# 2026, the Lampunut tile + its "...Land_Aktif-selesai_Disturb" shapefile), that was
+# erasing legitimate small clearings along with noise: recall 73.1%/precision 92.4%
+# (F1 81.6%) at 10 vs. recall 80.0%/precision 77.2% (F1 78.6%) with opening removed
+# entirely - too much real area lost either way. A sweep over opening=0..10 (closing held
+# at 15) found opening=6 Pareto-dominates the original 10 on this ground truth (recall
+# 76.2% vs 73.1%, F1 81.9% vs 81.6% - both better, not a trade-off), so that's the new
+# default. If a future site's imagery still under- or over-detects, re-run the sweep
+# (script left as reference logic, not checked in - see git history for this commit's
+# message) against that site's own digitized ground truth rather than guessing a value.
+OPENING_ITERATIONS = 6  # first: strip small false "cleared" specks inside real vegetation
 CLOSING_ITERATIONS = 15  # then: fill small gaps/holes inside real clearings
 
 # ponytail: threshold-per-pixel + morphology is patching jaggedness after the fact, not
@@ -61,7 +70,8 @@ CLOSING_ITERATIONS = 15  # then: fill small gaps/holes inside real clearings
 
 
 def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_px=DEFAULT_SMOOTH_PX,
-                        fill_holes=True, block_size=3000, overlap=150, progress_cb=None):
+                        fill_holes=True, fresh_color=False, bright_min=120.0,
+                        block_size=3000, overlap=150, progress_cb=None):
     """
     Returns (mask, info): mask is a full-raster-size uint8 numpy array (1 = cleared/bare
     ground, indexed [row, col] same as detector.detect_trees' 'py'/'px'), info is the
@@ -69,6 +79,15 @@ def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_
     arcpy raster + vectorizes it) so detect.py can reuse just the mask, in-memory, to
     filter out tree candidates that land on bare ground - without needing a raster/
     feature class round trip for that.
+
+    fresh_color, ported from the QGIS original (detector.py's detect_land_clearing):
+    also require bright + reddish raw RGB (brightness > bright_min and R >= B) - the
+    ExG-only threshold reads roads/rivers as "cleared" too since they also have low
+    greenness, but they're darker/bluer than freshly bared soil. Off by default like the
+    original; a real accuracy check (2026-08-02, see the "ponytail:" note above
+    CLOSING_ITERATIONS) found it a more targeted false-positive filter than blob-size
+    erosion (the opening pass removed there) - worth trying on site imagery where
+    roads/rivers are inflating false positives.
     """
     info = RasterInfo(raster_path)
     H, W = info.H, info.W
@@ -91,6 +110,9 @@ def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_
             exg = ndimage.gaussian_filter(exg, smooth_px)
 
         cleared = valid & (exg < exg_threshold)
+        if fresh_color:
+            brightness = (r + g + b) / 3.0
+            cleared = cleared & (brightness > bright_min) & (r >= b)
 
         # This block's overlap tail duplicates the start of the next block - same
         # crop-to-core idea detector.detect_trees uses for its point candidates, applied
@@ -126,14 +148,14 @@ def build_cleared_mask_obia(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
                              segment_px=DEFAULT_SEGMENT_PX, compactness=10.0,
                              block_size=3000, overlap=150, progress_cb=None):
     """
-    OBIA prototype (see the "ponytail:" note above OPENING_ITERATIONS): segments each
+    OBIA prototype (see the "ponytail:" note above CLOSING_ITERATIONS): segments each
     block into superpixels with skimage's SLIC first, then classifies whole segments by
     mean ExG instead of thresholding pixel-by-pixel - segment boundaries already follow
     real color edges, so this is meant to produce a clearing boundary close to
-    build_cleared_mask's post-hoc opening/closing result without a separate smoothing
-    pass. Same row-block splitting as build_cleared_mask, so a superpixel that straddles
-    a block boundary can still show a seam - untested yet against a real gigapixel
-    orthophoto (see the deferred-work note this prototype fulfills).
+    build_cleared_mask's post-hoc closing result without a separate smoothing pass. Same
+    row-block splitting as build_cleared_mask, so a superpixel that straddles a block
+    boundary can still show a seam - untested yet against a real gigapixel orthophoto
+    (see the deferred-work note this prototype fulfills).
     """
     info = RasterInfo(raster_path)
     H, W = info.H, info.W
@@ -177,6 +199,7 @@ def build_cleared_mask_obia(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
 
 def detect_land_clearing(raster_path, output_mask_raster, exg_threshold=DEFAULT_EXG_THRESHOLD,
                           smooth_px=DEFAULT_SMOOTH_PX, fill_holes=True,
+                          fresh_color=False, bright_min=120.0,
                           block_size=3000, overlap=150, progress_cb=None, method="exg"):
     """
     Writes a single-band raster to output_mask_raster (same extent/spatial reference as
@@ -185,14 +208,15 @@ def detect_land_clearing(raster_path, output_mask_raster, exg_threshold=DEFAULT_
     class, with nothing else to filter out afterward). Returns output_mask_raster.
 
     method="exg" (default) is build_cleared_mask; method="obia" is the SLIC-based
-    build_cleared_mask_obia prototype - see its docstring.
+    build_cleared_mask_obia prototype - see its docstring. fresh_color/bright_min only
+    apply to method="exg" - see build_cleared_mask's docstring.
     """
     if method == "obia":
         mask, info = build_cleared_mask_obia(raster_path, exg_threshold, block_size=block_size,
                                               overlap=overlap, progress_cb=progress_cb)
     else:
         mask, info = build_cleared_mask(raster_path, exg_threshold, smooth_px, fill_holes,
-                                         block_size, overlap, progress_cb)
+                                         fresh_color, bright_min, block_size, overlap, progress_cb)
     lower_left = arcpy.Point(info.xmin, info.ymax - info.H * info.px_size)
     raster = arcpy.NumPyArrayToRaster(mask, lower_left, info.px_size, info.px_size, value_to_nodata=0)
     raster.save(output_mask_raster)

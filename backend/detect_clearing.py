@@ -5,7 +5,8 @@ Run under ArcGIS Pro's own python (arcgispro-py3 conda env), same as detect.py.
 
 Called by TreeCounterAddin/PythonBackendService.cs as:
     python detect_clearing.py --raster <path> --output-fc <feature class path> \
-        --summary <json path> [--exg-threshold N] [--smooth-px N] [--min-area-m2 N] \
+        --summary <json path> [--exg-threshold N] [--smooth-px N] [--method exg|obia] \
+        [--fresh-color] [--bright-min N] [--min-area-m2 N] \
         [--exclude-fc <polygon feature class to erase, e.g. already-harvested area>]
 
 Writes the detected clearing polygons to --output-fc and a JSON summary to --summary:
@@ -29,6 +30,9 @@ def main() -> int:
     parser.add_argument("--smooth-px", type=float, default=DEFAULT_SMOOTH_PX)
     parser.add_argument("--method", choices=["exg", "obia"], default="exg",
                          help="obia = SLIC-superpixel prototype, see land_clearing.py")
+    parser.add_argument("--fresh-color", action="store_true",
+                         help="Also require bright+reddish RGB (filters roads/rivers) - see land_clearing.py")
+    parser.add_argument("--bright-min", type=float, default=120.0)
     parser.add_argument("--min-area-m2", type=float, default=100.0)
     parser.add_argument("--exclude-fc", default=None,
                          help="Polygon feature class to erase from results (e.g. already-harvested area)")
@@ -46,6 +50,7 @@ def main() -> int:
         detect_land_clearing(
             args.raster, mask_raster,
             exg_threshold=args.exg_threshold, smooth_px=args.smooth_px, method=args.method,
+            fresh_color=args.fresh_color, bright_min=args.bright_min,
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True),
         )
 
