@@ -36,6 +36,17 @@ from raster_io import RasterInfo, read_block
 DEFAULT_EXG_THRESHOLD = 18
 DEFAULT_SMOOTH_PX = 3
 
+# Water (ponds/rivers) also reads as low-ExG "cleared" - it has no vegetation greenness
+# either. Distinguished from bare soil the same way fresh_color tells soil apart from
+# roads/rivers (see build_cleared_mask's docstring): soil is bright and reddish (r >= b),
+# water is dark and neutral-to-blue (b >= r). Unlike fresh_color this isn't optional - a
+# pond flagged as "cleared land" is always wrong, not a site-specific precision/recall
+# trade-off - so it's applied unconditionally rather than gated behind a CLI flag.
+# ponytail: threshold picked by eye against the reported false-positive screenshots, not
+# swept against ground truth like OPENING_ITERATIONS - revisit if it clips real dark/wet
+# bare soil on some site.
+WATER_BRIGHTNESS_MAX = 90.0
+
 # Denoise/generalize passes, applied once to the FULL assembled mask (not per-block - see
 # below). Repeated small-kernel passes (scipy's own recommended efficient approach) rather
 # than one big structuring element: iterations=N with the default 3x3 cross approximates a
@@ -109,9 +120,10 @@ def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_
         if smooth_px and smooth_px > 1:
             exg = ndimage.gaussian_filter(exg, smooth_px)
 
-        cleared = valid & (exg < exg_threshold)
+        brightness = (r + g + b) / 3.0
+        water = (brightness < WATER_BRIGHTNESS_MAX) & (b >= r)
+        cleared = valid & (exg < exg_threshold) & ~water
         if fresh_color:
-            brightness = (r + g + b) / 3.0
             cleared = cleared & (brightness > bright_min) & (r >= b)
 
         # This block's overlap tail duplicates the start of the next block - same

@@ -78,6 +78,39 @@ def test_detects_bare_patch_across_multiple_blocks():
         _assert_mask_matches_patch(mask_path)
 
 
+def test_water_not_flagged_as_cleared():
+    # Water has no vegetation greenness either (low ExG, like bare soil) but reads dark
+    # and neutral-to-blue rather than bright and reddish - proves the water filter (see
+    # WATER_BRIGHTNESS_MAX in land_clearing.py) keeps a pond from being flagged as a
+    # clearing, unlike the bright/reddish bare-soil patch above.
+    with tempfile.TemporaryDirectory() as tmp:
+        base_tif_path = os.path.join(tmp, "synthetic.tif")
+        tif_path = os.path.join(tmp, "synthetic_water.tif")
+        mask_path = os.path.join(tmp, "mask.tif")
+        _make_synthetic_tif(base_tif_path)
+
+        arr = arcpy.RasterToNumPyArray(base_tif_path).astype(np.uint8)
+        # Dark, slightly-blue water patch elsewhere in the green background, low ExG
+        # (2*30 - 25 - 35 = 0) same as the bare soil patch but dark instead of bright.
+        arr[0, 50:100, 50:100] = 25
+        arr[1, 50:100, 50:100] = 30
+        arr[2, 50:100, 50:100] = 35
+        # Written to a new path, not back over base_tif_path - arcpy can still hold an
+        # open handle on the file it was just read from, and overwriting a raster
+        # in place while it's open elsewhere is unsafe (hung indefinitely here).
+        raster = arcpy.NumPyArrayToRaster(arr, arcpy.Point(0, 0), PX_SIZE_M, PX_SIZE_M)
+        raster.save(tif_path)
+        del raster  # drop the file handle now, not whenever the function returns -
+                    # it would otherwise still be open when the `with` block tries to
+                    # clean up tmp below, and Windows won't delete a locked file.
+        arcpy.management.DefineProjection(tif_path, arcpy.SpatialReference(32750))
+
+        detect_land_clearing(tif_path, mask_path, exg_threshold=18, smooth_px=0, fill_holes=False)
+        mask = arcpy.RasterToNumPyArray(mask_path, nodata_to_value=0)
+        assert mask[75, 75] == 0, "water patch falsely flagged as cleared"
+        assert mask[200, 200] == 1, "bare soil patch not flagged as cleared"
+
+
 def test_detects_bare_patch_obia():
     # Superpixel classification isn't pixel-exact at edges the way the ExG method +
     # morphology is (segments straddling the true boundary vote by majority), so this
@@ -94,5 +127,6 @@ def test_detects_bare_patch_obia():
 if __name__ == "__main__":
     test_detects_bare_patch()
     test_detects_bare_patch_across_multiple_blocks()
+    test_water_not_flagged_as_cleared()
     test_detects_bare_patch_obia()
     print("OK")

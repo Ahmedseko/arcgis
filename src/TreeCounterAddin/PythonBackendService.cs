@@ -20,6 +20,12 @@ namespace TreeCounterAddin
 
     internal record LandClearingResult(bool Success, bool Cancelled, int PolygonCount, string OutputFc, string ErrorMessage, double AreaHa = 0);
 
+    internal record CompareChangesRequest(
+        string OldFc, string NewFc, string OutputLostFc, string OutputNewFc, double MaxDistM);
+
+    internal record CompareChangesResult(
+        bool Success, int LostCount, int NewCount, int MatchedCount, string LostFc, string NewFc, string ErrorMessage);
+
     // Shells out to the ArcGIS Pro conda python + backend/detect.py (ported ExG matched-filter
     // + YOLOv8n ONNX pipeline from qgis_plugin/tree_counter, plus optional Gemini Vision
     // validation) instead of reimplementing the numpy/scipy-heavy detection math in C#.
@@ -41,6 +47,7 @@ namespace TreeCounterAddin
         private static readonly string DetectScript = Path.Combine(BackendDir, "detect.py");
         private static readonly string DetectClearingScript = Path.Combine(BackendDir, "detect_clearing.py");
         private static readonly string CheckApiKeyScript = Path.Combine(BackendDir, "check_api_key.py");
+        private static readonly string CompareDetectionsScript = Path.Combine(BackendDir, "compare_detections.py");
 
         public static async Task<DetectionResult> RunDetectionAsync(
             DetectionRequest request, Action<int> onProgress = null, Action<string> onStage = null,
@@ -221,6 +228,77 @@ namespace TreeCounterAddin
             catch (Exception ex)
             {
                 return new LandClearingResult(false, false, 0, null, ex.Message);
+            }
+        }
+
+        // Shells out to backend/compare_detections.py - a quick cKDTree nearest-neighbor
+        // match (no chunked raster scan), so unlike RunDetectionAsync/RunLandClearingAsync
+        // this has no PROGRESS/STAGE reporting or cancellation, same as TestApiKeyAsync
+        // below - just run to completion and read the summary.
+        public static async Task<CompareChangesResult> RunCompareChangesAsync(
+            CompareChangesRequest request, CancellationToken cancellationToken = default)
+        {
+            var pythonExe = File.Exists(ProPythonExe) ? ProPythonExe : "python";
+            var scriptPath = Path.GetFullPath(CompareDetectionsScript);
+
+            if (!File.Exists(scriptPath))
+                return new CompareChangesResult(false, 0, 0, 0, null, null, $"Script not found: {scriptPath}");
+
+            var summaryPath = Path.Combine(Path.GetTempPath(), $"compare_changes_{Guid.NewGuid():N}.json");
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = pythonExe,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            psi.ArgumentList.Add(scriptPath);
+            psi.ArgumentList.Add("--old-fc"); psi.ArgumentList.Add(request.OldFc);
+            psi.ArgumentList.Add("--new-fc"); psi.ArgumentList.Add(request.NewFc);
+            psi.ArgumentList.Add("--output-lost-fc"); psi.ArgumentList.Add(request.OutputLostFc);
+            psi.ArgumentList.Add("--output-new-fc"); psi.ArgumentList.Add(request.OutputNewFc);
+            psi.ArgumentList.Add("--summary"); psi.ArgumentList.Add(summaryPath);
+            psi.ArgumentList.Add("--max-dist-m"); psi.ArgumentList.Add(request.MaxDistM.ToString(CultureInfo.InvariantCulture));
+
+            try
+            {
+                using var process = new Process { StartInfo = psi };
+
+                using var cancelRegistration = cancellationToken.Register(() =>
+                {
+                    try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+                    catch { /* already exited */ }
+                });
+
+                process.Start();
+                var stderr = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode != 0)
+                {
+                    var message = string.IsNullOrWhiteSpace(stderr)
+                        ? $"python.exe exited with code {process.ExitCode} and no error output."
+                        : stderr;
+                    return new CompareChangesResult(false, 0, 0, 0, null, null, message);
+                }
+
+                var json = await File.ReadAllTextAsync(summaryPath);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                return new CompareChangesResult(
+                    true,
+                    root.GetProperty("lost_count").GetInt32(),
+                    root.GetProperty("new_count").GetInt32(),
+                    root.GetProperty("matched_count").GetInt32(),
+                    root.GetProperty("lost_fc").GetString(),
+                    root.GetProperty("new_fc").GetString(),
+                    null);
+            }
+            catch (Exception ex)
+            {
+                return new CompareChangesResult(false, 0, 0, 0, null, null, ex.Message);
             }
         }
 

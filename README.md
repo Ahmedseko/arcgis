@@ -67,6 +67,10 @@ backend/                  Python port of qgis_plugin/tree_counter, invoked
 - `backend/detect_clearing.py` - CLI entry point for land clearing detection:
   runs the mask scan, vectorizes it, filters by minimum area, optionally
   erases an "already cleared" exclude area, writes the result + JSON summary.
+- `backend/compare_detections.py` - CLI entry point for the Compare Changes
+  feature: reads two Tree Detection point feature classes, runs
+  `detector.compare_detections()`'s greedy nearest-neighbor match, writes the
+  unmatched points back out as "Lost"/"New" point feature classes.
 
 **Not ported** (out of scope for "count trees"): `compute_heterogeneity_raster`
 (contrast preview) - a QGIS plugin helper for manually picking where to draw
@@ -148,7 +152,20 @@ status line shows "Cancelled."
   area in hectares, click **Detect Clearing**. Runs as a background Python
   subprocess (same as Tree Detection), safe against large orthophotos - the
   scan itself is chunked/blocked so memory stays bounded regardless of raster
-  size. *Cancel: yes.*
+  size. Ponds/rivers are excluded automatically (they have no vegetation
+  greenness either, but read dark/blue rather than bright/reddish like bare
+  soil - see `WATER_BRIGHTNESS_MAX` in `backend/land_clearing.py`, added
+  2026-08-03 after a real result flagged two ponds as "cleared"). *Cancel:
+  yes.*
+- **Compare Changes** - change detection between two Tree Detection runs of
+  the same site over time. Pick the old and new detection point layers and a
+  match distance (meters - covers re-run centroid jitter, not just exact
+  pixel repeats), click **Compare**. Wraps `detector.compare_detections()`'s
+  greedy nearest-neighbor matching (already ported, just needed a UI - see
+  `backend/compare_detections.py`); old points with no match load as a red
+  "Lost" layer (likely felled), new points with no match load as a green
+  "New" layer (likely regrowth/previously missed). *Cancel: no (a single
+  quick nearest-neighbor match, no GP tool chain).*
 - **Sliver Polygon Detection** - pick a polygon layer, click **Detect
   Slivers**. Auto-calibrates against that layer's own median part size/shape
   (no fixed threshold to tune) and selects the flagged slivers on the map.
@@ -263,13 +280,14 @@ into that same env (already installed in this environment):
 & "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" -m pip install onnxruntime pillow
 ```
 
-Tests (run with Pro's bundled python, both already passing in this
+Tests (run with Pro's bundled python, all already passing in this
 environment):
 
 ```powershell
 & "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_detect.py             # CLI smoke test (argparse, exit codes)
 & "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_pipeline_e2e.py        # e2e: synthetic raster -> detect_trees -> detected positions
 & "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_land_clearing_e2e.py   # e2e: synthetic raster -> detect_land_clearing -> mask matches planted patch
+& "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" backend\test_compare_detections_e2e.py  # e2e: feature classes -> compare_detections -> lost/new feature classes
 ```
 
 ## Status (Tree Detection / Python backend)
@@ -280,10 +298,6 @@ in the DockPane.
 
 **Not done:**
 
-- A "Compare Changes" feature (diff two detection runs over time) from the
-  QGIS plugin - `compare_detections()` is already ported in
-  `backend/detector.py` (generic function, no extra porting needed), but
-  there's no UI for it in the DockPane yet. Add it if actually needed.
 - Backend pipeline confirmed working against a real large drone orthophoto
   (54150x36052 px, 4-band, ~6.3 GB, "Natural Forest" profile) via direct CLI
   run of `detect.py` - completed without error/memory issues, 7,369 trees
@@ -320,3 +334,17 @@ in the DockPane.
   an opt-in `--fresh-color`/`--bright-min` CLI flag, but measured worse on
   this tile (67.9% recall) so stays off by default - a knob for site-by-site
   tuning against that site's own ground truth, not a universal fix.
+- Real orthophoto also showed ponds inside the survey area flagged as
+  "cleared" (2026-08-03 - two water bodies near a road/bare-soil patch,
+  visually confirmed) - water has no vegetation greenness either (same low
+  ExG as bare soil) but reads dark/blue rather than bright/reddish, so it's
+  now excluded unconditionally (`WATER_BRIGHTNESS_MAX` in
+  `land_clearing.py`) rather than gated behind the `fresh_color` flag above.
+  Picked by eye against the reported false positive, not swept against
+  ground truth like `OPENING_ITERATIONS` was - revisit if it starts clipping
+  real dark/wet bare soil on some site.
+- "Compare Changes" (diff two Tree Detection runs over time) now has a
+  DockPane UI (Analyze tab) - `detector.compare_detections()`'s
+  nearest-neighbor matching was already ported, just needed
+  `backend/compare_detections.py` (CLI) + `PythonBackendService`/DockPane
+  wiring (2026-08-03).
