@@ -312,9 +312,19 @@ in the DockPane.
   threshold fix), (2) one real tree crown sometimes split into multiple
   points (Sigma likely too small for that crown's actual size), (3) many
   real crowns missed entirely, (4) false positives on visibly
-  blurred/stitching-artifact regions of the orthomosaic. (2)-(4) are still
-  open - Sigma/threshold recalibration and/or a data-quality filter for
-  bad image regions would need their own round of real-data testing.
+  blurred/stitching-artifact regions of the orthomosaic. (2)-(3) are still
+  open - would need a round of Sigma/threshold recalibration against real
+  ground truth (the way `land_clearing.py`'s morphology constants got
+  tuned). (4) has a candidate fix now: `detect_trees`'/`detect.py`'s
+  `exclude_blurry` option (2026-08-03, opt-in, off by default) drops
+  candidates in low local-detail regions ("variance of Laplacian", the
+  classic blur-detection metric - see `BLUR_VARIANCE_MIN` in
+  `detector.py`) computed straight off each block's own pixels, no extra
+  raster pass needed. Same status as `land_clearing.py`'s `fresh_color`
+  flag: the threshold was picked by eye against a synthetic blur/texture
+  test, not swept against a real blurred orthophoto region - try it
+  site-by-site (`--exclude-blurry` on `detect.py`) rather than trusting it
+  as a universal default.
 - Land Clearing Detection's boundary also looked "too busy/jagged, not like
   human digitization" on first visual check - fixed with an opening+closing
   smoothing pass on the mask plus switching `RasterToPolygon` to `SIMPLIFY`

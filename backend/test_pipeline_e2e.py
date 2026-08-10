@@ -80,7 +80,45 @@ def test_detects_planted_crowns_across_multiple_blocks():
             assert abs(fx - ex) <= 2 and abs(fy - ey) <= 2, f"detected {(fx, fy)} too far from planted {(ex, ey)}"
 
 
+def test_exclude_blurry_drops_smooth_crown_keeps_textured_one():
+    # A smooth Gaussian blob (same shape _make_synthetic_tif's crowns already use) has
+    # almost no high-frequency detail - a stand-in for a blurred/stitching-seam region.
+    # Real canopy texture (leaves/fronds) gives much higher local Laplacian variance,
+    # simulated here as noise confined to the crown. See detector.BLUR_VARIANCE_MIN.
+    SHARP_CROWN = (150, 150)
+    BLURRY_CROWN = (250, 250)
+    with tempfile.TemporaryDirectory() as tmp:
+        tif_path = os.path.join(tmp, "synthetic.tif")
+
+        rng = np.random.default_rng(0)
+        arr = np.full((3, SIZE, SIZE), 40, dtype=np.uint8)
+        ys, xs = np.mgrid[0:SIZE, 0:SIZE]
+        for (cx, cy), textured in [(SHARP_CROWN, True), (BLURRY_CROWN, False)]:
+            dist2 = (xs - cx) ** 2 + (ys - cy) ** 2
+            blob = np.exp(-dist2 / (2 * 12.0 ** 2))
+            green = blob * 180
+            if textured:
+                green = green + rng.uniform(-40, 40, size=(SIZE, SIZE)) * (blob > 0.05)
+            arr[1] = np.clip(arr[1] + green, 0, 255)
+        raster = arcpy.NumPyArrayToRaster(arr, arcpy.Point(0, 0), PX_SIZE_M, PX_SIZE_M)
+        raster.save(tif_path)
+        del raster  # drop the file handle now - see test_land_clearing_e2e.py's own
+                    # note on this, same Windows file-lock-on-cleanup issue.
+        arcpy.management.DefineProjection(tif_path, arcpy.SpatialReference(32750))
+
+        trees, _ = detect_trees(
+            tif_path, sigma_px=12, exg_threshold=30, min_smooth=20,
+            mode='forest', min_density=0.0, extra_scales=[], exclude_blurry=True)
+
+        found = [(t['px'], t['py']) for t in trees]
+        assert any(abs(px - SHARP_CROWN[0]) <= 2 and abs(py - SHARP_CROWN[1]) <= 2 for px, py in found), \
+            f"textured/sharp crown should still be detected: {found}"
+        assert not any(abs(px - BLURRY_CROWN[0]) <= 2 and abs(py - BLURRY_CROWN[1]) <= 2 for px, py in found), \
+            f"smooth/blurry crown should be filtered out: {found}"
+
+
 if __name__ == "__main__":
     test_detects_planted_crowns()
     test_detects_planted_crowns_across_multiple_blocks()
+    test_exclude_blurry_drops_smooth_crown_keeps_textured_one()
     print("OK")

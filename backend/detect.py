@@ -86,7 +86,7 @@ def _write_feature_class(trees, raster_path, output_fc):
 
 def detect(raster_path: str, profile: str, sigma=None, exg_threshold=None,
            min_smooth=None, conf_threshold=0.25, exclude_cleared_land=False,
-           progress_cb=None, stage_cb=None,
+           exclude_blurry=False, progress_cb=None, stage_cb=None,
            ai_provider=None, api_key=None, ai_model=None) -> tuple:
     if not arcpy.Exists(raster_path):
         raise FileNotFoundError(f"Raster not found: {raster_path}")
@@ -119,11 +119,13 @@ def detect(raster_path: str, profile: str, sigma=None, exg_threshold=None,
         else:
             trees, _ = detect_trees(
                 raster_path, sigma_px=sigma, exg_threshold=exg_threshold,
-                min_smooth=min_smooth, mode=mode, progress_cb=detect_progress)
+                min_smooth=min_smooth, mode=mode, progress_cb=detect_progress,
+                exclude_blurry=exclude_blurry)
     else:
         trees, _ = detect_trees(
             raster_path, sigma_px=sigma, exg_threshold=exg_threshold,
-            min_smooth=min_smooth, mode=mode, progress_cb=detect_progress)
+            min_smooth=min_smooth, mode=mode, progress_cb=detect_progress,
+            exclude_blurry=exclude_blurry)
 
     filtered_cleared_count = 0
     if exclude_cleared_land:
@@ -177,6 +179,8 @@ def main() -> int:
     parser.add_argument("--conf-threshold", type=float, default=0.25)
     parser.add_argument("--exclude-cleared", action="store_true",
                          help="Drop candidates that fall on cleared/bare ground (see land_clearing.py) - roughly doubles run time")
+    parser.add_argument("--exclude-blurry", action="store_true",
+                         help="Drop candidates in blurred/stitching-seam regions (see detector.BLUR_VARIANCE_MIN) - unvalidated against ground truth, opt-in")
     parser.add_argument("--ai-provider", choices=list(DEFAULT_MODEL_BY_PROVIDER), default=None)
     parser.add_argument("--api-key", default=None)
     parser.add_argument("--ai-model", default=None)
@@ -187,6 +191,7 @@ def main() -> int:
             args.raster, args.profile, sigma=args.sigma,
             exg_threshold=args.exg_threshold, min_smooth=args.min_smooth,
             conf_threshold=args.conf_threshold, exclude_cleared_land=args.exclude_cleared,
+            exclude_blurry=args.exclude_blurry,
             ai_provider=args.ai_provider, api_key=args.api_key, ai_model=args.ai_model,
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True),
             stage_cb=lambda s: print(f"STAGE {s}", flush=True),

@@ -19,6 +19,21 @@ from raster_io import RasterInfo, read_block
 
 REFERENCE_GSD_M = 0.05
 
+# "Variance of Laplacian" blur/focus metric (the standard OpenCV-cookbook technique,
+# reimplemented with scipy instead of a new cv2 dependency - see yolo_detector.py's own
+# no-cv2 precedent): a flat/blurred region has almost no high-frequency detail, so its
+# Laplacian stays near zero everywhere; real canopy detail swings the Laplacian both
+# positive and negative at every leaf/frond edge, giving high local variance. Used by
+# detect_trees' exclude_blurry option to drop candidates in visibly blurred/stitching-
+# seam regions of an orthomosaic (README's "Not done" item (4), 2026-07-31 visual check).
+# ponytail: BLUR_VARIANCE_MIN picked by eye, not swept against ground truth like
+# land_clearing.py's OPENING_ITERATIONS was - a real blurred orthophoto region to test
+# against would tell us whether this is too aggressive (cutting real low-contrast shaded
+# canopy) or not aggressive enough. Off by default until validated - same reasoning as
+# land_clearing.py's fresh_color flag.
+BLUR_WINDOW_PX = 25
+BLUR_VARIANCE_MIN = 20.0
+
 PROFILES = {
     # forest's min_density raised 0.45 -> 0.6 after visual validation against a real
     # orthophoto (2026-07-31) showed many false-positive points on sparse
@@ -93,9 +108,19 @@ def _refine_centroid(veg_mask, exg, px_i, py_i, radius):
     return int(round(cx)), int(round(cy))
 
 
+def _sharp_mask(r, g, b, win_px):
+    """See BLUR_VARIANCE_MIN above. r/g/b are one raster block (float32, ~0-255)."""
+    gray = (r + g + b) / 3.0
+    lap = ndimage.laplace(gray)
+    mean = ndimage.uniform_filter(lap, size=win_px)
+    sq_mean = ndimage.uniform_filter(lap * lap, size=win_px)
+    variance = sq_mean - mean ** 2
+    return variance > BLUR_VARIANCE_MIN
+
+
 def detect_trees(raster_path, sigma_px=75, exg_threshold=25, min_smooth=15,
                   mode='forest', block_size=3000, overlap=150, progress_cb=None,
-                  min_density=None, extra_scales=None):
+                  min_density=None, extra_scales=None, exclude_blurry=False):
     """
     Returns (trees, raster_info)
     trees: list of dict {px, py, geo_x, geo_y, crown_r, sigma}
@@ -145,6 +170,11 @@ def detect_trees(raster_path, sigma_px=75, exg_threshold=25, min_smooth=15,
         exg = 2.0 * g - r - b
         veg_mask = (valid & (exg > exg_threshold)).astype(np.float32)
 
+        # Computed once per block (not per scale, unlike the scale-dependent gates below -
+        # blurriness is a property of the imagery, not of the crown size being searched
+        # for) straight off this block's own r/g/b - no second raster read needed.
+        sharp = _sharp_mask(r, g, b, max(5, int(round(BLUR_WINDOW_PX * scale)))) if exclude_blurry else None
+
         for s in scales:
             # Keep candidates away from the edge of nodata holes inside the
             # canopy (photo-stitching artifacts) AND from the outer edge of
@@ -158,6 +188,8 @@ def detect_trees(raster_path, sigma_px=75, exg_threshold=25, min_smooth=15,
             valid_core[-margin_px:, :] = False
             valid_core[:, :margin_px] = False
             valid_core[:, -margin_px:] = False
+            if sharp is not None:
+                valid_core = valid_core & sharp
 
             signal = ndimage.gaussian_filter(np.where(veg_mask > 0, exg, 0.0), sigma=s)
 
