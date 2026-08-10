@@ -32,6 +32,36 @@ from land_clearing import build_cleared_mask, DEFAULT_EXG_THRESHOLD, DEFAULT_SMO
 # ground truth - revisit if it's still too noisy or starts eating real short driveways.
 PRUNE_LENGTH_M = 8.0
 
+# Same real result, second problem: the extracted line visibly wandered off the actual
+# road surface into the wide bare dirt/quarry/stockpile ground alongside it. Root cause -
+# land_clearing.py's mask flags ALL bare ground, road or not, and skeletonize follows the
+# medial axis of whatever shape it's given: on a uniform-width strip that axis IS the
+# road's centerline, but on a wide, irregular blob (a quarry pit, a wide cleared yard) the
+# medial axis just traces that blob's own shape, which isn't a road at all. Filtering the
+# mask down to only its "thin enough to plausibly be a road" parts before skeletonizing
+# fixes this at the source instead of trying to clean up the resulting wander after the
+# fact - same idea real river-centerline extraction uses to exclude lakes from a water
+# mask before skeletonizing it into a channel network.
+# ponytail: MAX_ROAD_WIDTH_M picked by eye against the same result, not swept against
+# ground truth - revisit if it's cutting real wide-but-legitimate road sections, or
+# leaving real quarry/yard blobs untouched.
+MAX_ROAD_WIDTH_M = 12.0
+
+
+def _remove_wide_regions(mask, width_px):
+    """
+    Zeroes out mask regions wider than width_px, leaving only its narrow (road-like)
+    parts - opening with an iterated small kernel isolates the "core" of anything wide
+    enough to survive erode-then-dilate at that radius (same iterated-3x3-kernel idiom
+    land_clearing.py's OPENING_ITERATIONS already uses, here to isolate what's too FAT to
+    be a road instead of what's too small to be a clearing), then that core is dilated
+    back out to roughly its original footprint and subtracted from the mask.
+    """
+    radius_iters = max(1, width_px // 2)
+    wide_core = ndimage.binary_opening(mask, iterations=radius_iters)
+    wide_footprint = ndimage.binary_dilation(wide_core, iterations=radius_iters)
+    return mask & ~wide_footprint
+
 
 def _prune_skeleton_spurs(skeleton, iterations):
     """
@@ -62,7 +92,7 @@ def _prune_skeleton_spurs(skeleton, iterations):
 
 def build_road_skeleton(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
                          smooth_px=DEFAULT_SMOOTH_PX, prune_length_m=PRUNE_LENGTH_M,
-                         progress_cb=None):
+                         max_width_m=MAX_ROAD_WIDTH_M, progress_cb=None):
     """
     Returns (skeleton, info): skeleton is a full-raster-size uint8 array (1 = centerline
     pixel), info is the RasterInfo - same shape/indexing as land_clearing.build_cleared_mask.
@@ -70,6 +100,10 @@ def build_road_skeleton(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
     mask_progress = (lambda p: progress_cb(int(p * 0.85))) if progress_cb else None
     mask, info = build_cleared_mask(raster_path, exg_threshold=exg_threshold,
                                      smooth_px=smooth_px, progress_cb=mask_progress)
+    if progress_cb:
+        progress_cb(88)
+    if max_width_m and info.px_size > 0:
+        mask = _remove_wide_regions(mask, max(1, int(round(max_width_m / info.px_size))))
     if progress_cb:
         progress_cb(90)
     # skeletonize needs a plain bool array, not the uint8 mask build_cleared_mask returns.
@@ -83,7 +117,8 @@ def build_road_skeleton(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
 
 
 def extract_road_skeleton_raster(raster_path, output_mask_raster, exg_threshold=DEFAULT_EXG_THRESHOLD,
-                                  smooth_px=DEFAULT_SMOOTH_PX, prune_length_m=PRUNE_LENGTH_M, progress_cb=None):
+                                  smooth_px=DEFAULT_SMOOTH_PX, prune_length_m=PRUNE_LENGTH_M,
+                                  max_width_m=MAX_ROAD_WIDTH_M, progress_cb=None):
     """
     Writes the skeleton (see build_road_skeleton) as a single-band raster to
     output_mask_raster (same extent/spatial reference as raster_path): 1 = centerline
@@ -91,7 +126,8 @@ def extract_road_skeleton_raster(raster_path, output_mask_raster, exg_threshold=
     out the same way so detect_roads.py's CLI only has to add the RasterToPolyline step.
     Returns output_mask_raster.
     """
-    skeleton, info = build_road_skeleton(raster_path, exg_threshold, smooth_px, prune_length_m, progress_cb)
+    skeleton, info = build_road_skeleton(raster_path, exg_threshold, smooth_px,
+                                          prune_length_m, max_width_m, progress_cb)
     lower_left = arcpy.Point(info.xmin, info.ymax - info.H * info.px_size)
     raster = arcpy.NumPyArrayToRaster(skeleton, lower_left, info.px_size, info.px_size, value_to_nodata=0)
     raster.save(output_mask_raster)

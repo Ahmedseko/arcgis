@@ -12,7 +12,10 @@ import tempfile
 import arcpy
 import numpy as np
 
-from road_extraction import build_road_skeleton, extract_road_skeleton_raster, _prune_skeleton_spurs
+from road_extraction import (
+    build_road_skeleton, extract_road_skeleton_raster,
+    _prune_skeleton_spurs, _remove_wide_regions,
+)
 
 SIZE = 400
 PX_SIZE_M = 0.05
@@ -37,6 +40,21 @@ def _make_synthetic_tif(path):
     raster.save(path)
     del raster  # release the file lock before this function's caller tries to clean up
     arcpy.management.DefineProjection(path, arcpy.SpatialReference(32750))
+
+
+def test_remove_wide_regions_drops_quarry_keeps_narrow_road():
+    # Pure-numpy mask (no raster round trip needed): a 10px-wide "road" strip connected
+    # to an 80x80 "quarry" blob - width_px=40 (a 20px-radius disk) should erase the wide
+    # blob's core (and its footprint) while leaving the narrow strip untouched, proving
+    # it tells a road apart from adjacent wide bare ground by shape, not just presence.
+    mask = np.zeros((200, 200), dtype=bool)
+    mask[95:105, :] = True  # 10px-wide horizontal strip (the "road")
+    mask[60:140, 150:200] = True  # 80x80 wide blob (the "quarry"), touching the strip
+
+    filtered = _remove_wide_regions(mask, width_px=40)
+
+    assert filtered[100, 10:100].all(), "narrow road strip should survive untouched"
+    assert not filtered[100, 170:190].any(), "wide quarry blob should be removed"
 
 
 def test_prune_removes_short_spur_keeps_real_branch():
@@ -106,6 +124,7 @@ def test_full_pipeline_vectorizes_to_polyline():
 
 
 if __name__ == "__main__":
+    test_remove_wide_regions_drops_quarry_keeps_narrow_road()
     test_prune_removes_short_spur_keeps_real_branch()
     test_skeleton_follows_strip_centerline()
     test_full_pipeline_vectorizes_to_polyline()

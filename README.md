@@ -185,6 +185,17 @@ status line shows "Cancelled."
   through-line only loses a few meters off its own tips.
   `RasterToPolyline`'s own `minimum_dangle_length` stays as a second,
   coarser safety net on whatever's left.
+
+  Same result, second problem: the line also visibly wandered off the
+  actual road surface into the wide bare dirt/quarry/stockpile ground
+  alongside it. Root cause - `land_clearing.py`'s mask flags *all* bare
+  ground, road or not, and skeletonize follows the medial axis of
+  whatever shape it's given; on a wide, irregular blob (a quarry pit, a
+  cleared yard) that axis just traces the blob's own shape, not a road.
+  `_remove_wide_regions` in `road_extraction.py` filters the mask down to
+  its "thin enough to plausibly be a road" parts (`MAX_ROAD_WIDTH_M`, 12m)
+  before skeletonizing, the same way real river-centerline extraction
+  excludes lakes from a water mask first.
 - **Compare Changes** - change detection between two Tree Detection runs of
   the same site over time. Pick the old and new detection point layers and a
   match distance (meters - covers re-run centroid jitter, not just exact

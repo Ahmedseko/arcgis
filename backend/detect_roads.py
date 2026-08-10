@@ -17,7 +17,7 @@ import sys
 import arcpy
 
 from land_clearing import DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX
-from road_extraction import extract_road_skeleton_raster, PRUNE_LENGTH_M
+from road_extraction import extract_road_skeleton_raster, PRUNE_LENGTH_M, MAX_ROAD_WIDTH_M
 
 
 def main() -> int:
@@ -31,6 +31,8 @@ def main() -> int:
                          help="Drop dangling line stubs shorter than this (skeletonize noise)")
     parser.add_argument("--prune-length-m", type=float, default=PRUNE_LENGTH_M,
                          help="Erode skeleton spurs/specks shorter than this before vectorizing (see road_extraction.py)")
+    parser.add_argument("--max-width-m", type=float, default=MAX_ROAD_WIDTH_M,
+                         help="Drop bare-ground regions wider than this (quarry pits, wide cleared yards - not roads; see road_extraction.py). 0 disables.")
     args = parser.parse_args()
 
     try:
@@ -43,7 +45,7 @@ def main() -> int:
         print("STAGE Scanning for road/trail centerlines...", flush=True)
         extract_road_skeleton_raster(
             args.raster, skel_raster, exg_threshold=args.exg_threshold, smooth_px=args.smooth_px,
-            prune_length_m=args.prune_length_m,
+            prune_length_m=args.prune_length_m, max_width_m=args.max_width_m,
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True))
         print("PROGRESS 96", flush=True)
 
