@@ -12,7 +12,7 @@ import tempfile
 import arcpy
 import numpy as np
 
-from road_extraction import build_road_skeleton, extract_road_skeleton_raster
+from road_extraction import build_road_skeleton, extract_road_skeleton_raster, _prune_skeleton_spurs
 
 SIZE = 400
 PX_SIZE_M = 0.05
@@ -37,6 +37,24 @@ def _make_synthetic_tif(path):
     raster.save(path)
     del raster  # release the file lock before this function's caller tries to clean up
     arcpy.management.DefineProjection(path, arcpy.SpatialReference(32750))
+
+
+def test_prune_removes_short_spur_keeps_real_branch():
+    # Pure-numpy skeleton (no raster round trip needed - _prune_skeleton_spurs doesn't
+    # touch arcpy): a 100px main line, a 5px "noise" spur off it, and a 20px real branch.
+    # Pruning with iterations=8 should erase the 5px spur entirely but leave most of the
+    # 20px branch intact (only its tip erodes) - proves it tells noise from a real fork
+    # by length, the same problem the 65-fragment real result (2026-08-10) had.
+    skeleton = np.zeros((100, 100), dtype=np.uint8)
+    skeleton[50, 0:100] = 1  # main line, row 50
+    skeleton[45:50, 50] = 1  # 5px noise spur off column 50
+    skeleton[50:70, 80] = 1  # 20px real branch off column 80
+
+    pruned = _prune_skeleton_spurs(skeleton, iterations=8)
+
+    assert pruned[45:48, 50].sum() == 0, "short noise spur should be fully removed"
+    assert pruned[50, 20:80].sum() > 50, "main line should survive mostly intact"
+    assert pruned[50:62, 80].sum() > 10, "real 20px branch should mostly survive, not be treated as noise"
 
 
 def test_skeleton_follows_strip_centerline():
@@ -65,7 +83,13 @@ def test_full_pipeline_vectorizes_to_polyline():
         skel_raster = os.path.join(gdb, "RoadSkeleton_tmp")
         out_fc = os.path.join(gdb, "roads")
 
-        extract_road_skeleton_raster(tif_path, skel_raster, exg_threshold=18, smooth_px=0)
+        # prune_length_m=0 (disabled): this test's own strip spans the raster's full
+        # 20m width, so both its ends touch the raster boundary and read as "endpoints"
+        # to _prune_skeleton_spurs the same as a real free-hanging spur would - pruning
+        # is exercised by its own dedicated unit test above instead, on a synthetic
+        # skeleton large enough that a real interior spur is distinguishable from a
+        # raster-edge cutoff.
+        extract_road_skeleton_raster(tif_path, skel_raster, exg_threshold=18, smooth_px=0, prune_length_m=0)
         arcpy.conversion.RasterToPolyline(skel_raster, out_fc, "ZERO", 5.0, "SIMPLIFY")
 
         count = int(arcpy.management.GetCount(out_fc)[0])
@@ -82,6 +106,7 @@ def test_full_pipeline_vectorizes_to_polyline():
 
 
 if __name__ == "__main__":
+    test_prune_removes_short_spur_keeps_real_branch()
     test_skeleton_follows_strip_centerline()
     test_full_pipeline_vectorizes_to_polyline()
     print("OK")

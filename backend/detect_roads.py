@@ -17,7 +17,7 @@ import sys
 import arcpy
 
 from land_clearing import DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX
-from road_extraction import extract_road_skeleton_raster
+from road_extraction import extract_road_skeleton_raster, PRUNE_LENGTH_M
 
 
 def main() -> int:
@@ -29,6 +29,8 @@ def main() -> int:
     parser.add_argument("--smooth-px", type=float, default=DEFAULT_SMOOTH_PX)
     parser.add_argument("--min-dangle-m", type=float, default=5.0,
                          help="Drop dangling line stubs shorter than this (skeletonize noise)")
+    parser.add_argument("--prune-length-m", type=float, default=PRUNE_LENGTH_M,
+                         help="Erode skeleton spurs/specks shorter than this before vectorizing (see road_extraction.py)")
     args = parser.parse_args()
 
     try:
@@ -41,6 +43,7 @@ def main() -> int:
         print("STAGE Scanning for road/trail centerlines...", flush=True)
         extract_road_skeleton_raster(
             args.raster, skel_raster, exg_threshold=args.exg_threshold, smooth_px=args.smooth_px,
+            prune_length_m=args.prune_length_m,
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True))
         print("PROGRESS 96", flush=True)
 

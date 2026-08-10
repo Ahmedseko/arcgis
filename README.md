@@ -172,6 +172,19 @@ status line shows "Cancelled."
   algorithm needed. Pick a raster layer, a minimum dangle length (drops
   short stub segments skeletonize leaves at noisy mask edges), click
   **Extract Roads**. *Cancel: yes.*
+
+  First real-orthophoto result (2026-08-10): correctly traced a real road
+  including a real fork into a connected bare clearing, but fragmented into
+  65 separate line segments - most of the extras were short (<10-15m)
+  "hair" spurs, a normal skeletonize artifact from any mask whose edge
+  isn't perfectly smooth, not real forks. Fixed with
+  `_prune_skeleton_spurs` in `road_extraction.py`: iteratively erodes free
+  skeleton endpoints for `PRUNE_LENGTH_M` (8m, picked by eye against this
+  one result - not swept against ground truth) worth of pixels before
+  vectorizing, so a spur shorter than that vanishes entirely while a real
+  through-line only loses a few meters off its own tips.
+  `RasterToPolyline`'s own `minimum_dangle_length` stays as a second,
+  coarser safety net on whatever's left.
 - **Compare Changes** - change detection between two Tree Detection runs of
   the same site over time. Pick the old and new detection point layers and a
   match distance (meters - covers re-run centroid jitter, not just exact
