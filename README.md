@@ -193,9 +193,18 @@ status line shows "Cancelled."
   whatever shape it's given; on a wide, irregular blob (a quarry pit, a
   cleared yard) that axis just traces the blob's own shape, not a road.
   `_remove_wide_regions` in `road_extraction.py` filters the mask down to
-  its "thin enough to plausibly be a road" parts (`MAX_ROAD_WIDTH_M`, 12m)
-  before skeletonizing, the same way real river-centerline extraction
-  excludes lakes from a water mask first.
+  its "thin enough to plausibly be a road" parts before skeletonizing, the
+  same way real river-centerline extraction excludes lakes from a water
+  mask first - **off by default** though (`MAX_ROAD_WIDTH_M = 0`): a first
+  attempt at a 12m threshold wiped a real result to 0 features, because on
+  that site the bare-ground corridor (road + graded shoulder/embankment)
+  runs wider than 24m for long stretches, not just at isolated quarry
+  pockets like assumed - one blanket constant can't tell "wide road" from
+  "wide quarry" without more site-specific tuning than a guess can give
+  it. Same status as `land_clearing.py`'s `fresh_color` flag: a knob to
+  try per-site (`--max-width-m` on `detect_roads.py`'s CLI, not yet wired
+  to the DockPane UI), not a default fix - a wandering-but-present line
+  beats producing nothing.
 - **Compare Changes** - change detection between two Tree Detection runs of
   the same site over time. Pick the old and new detection point layers and a
   match distance (meters - covers re-run centroid jitter, not just exact

@@ -42,10 +42,16 @@ PRUNE_LENGTH_M = 8.0
 # fixes this at the source instead of trying to clean up the resulting wander after the
 # fact - same idea real river-centerline extraction uses to exclude lakes from a water
 # mask before skeletonizing it into a channel network.
-# ponytail: MAX_ROAD_WIDTH_M picked by eye against the same result, not swept against
-# ground truth - revisit if it's cutting real wide-but-legitimate road sections, or
-# leaving real quarry/yard blobs untouched.
-MAX_ROAD_WIDTH_M = 12.0
+#
+# ponytail: OFF by default (max_width_m=0 below), unlike PRUNE_LENGTH_M above - a first
+# attempt at 12m wiped an entire real road result to 0 features (2026-08-10): on that
+# site the bare-ground corridor (road + graded shoulder/embankment) runs wider than 24m
+# for long stretches, not just at isolated quarry pockets like assumed, so this one
+# blanket threshold can't tell "wide road" from "wide quarry" without more site-specific
+# tuning than a single guessed constant can give it. Same status as land_clearing.py's
+# fresh_color flag: a knob to try per-site (via detect_roads.py's --max-width-m), not a
+# default fix - producing a wandering-but-present line beats producing nothing.
+MAX_ROAD_WIDTH_M = 0
 
 
 def _remove_wide_regions(mask, width_px):
