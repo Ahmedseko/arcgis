@@ -20,6 +20,11 @@ namespace TreeCounterAddin
 
     internal record LandClearingResult(bool Success, bool Cancelled, int PolygonCount, string OutputFc, string ErrorMessage, double AreaHa = 0);
 
+    internal record RoadExtractionRequest(
+        string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinDangleM);
+
+    internal record RoadExtractionResult(bool Success, bool Cancelled, int LineCount, string OutputFc, string ErrorMessage, double LengthKm = 0);
+
     internal record CompareChangesRequest(
         string OldFc, string NewFc, string OutputLostFc, string OutputNewFc, double MaxDistM);
 
@@ -46,6 +51,7 @@ namespace TreeCounterAddin
             "backend");
         private static readonly string DetectScript = Path.Combine(BackendDir, "detect.py");
         private static readonly string DetectClearingScript = Path.Combine(BackendDir, "detect_clearing.py");
+        private static readonly string DetectRoadsScript = Path.Combine(BackendDir, "detect_roads.py");
         private static readonly string CheckApiKeyScript = Path.Combine(BackendDir, "check_api_key.py");
         private static readonly string CompareDetectionsScript = Path.Combine(BackendDir, "compare_detections.py");
 
@@ -228,6 +234,89 @@ namespace TreeCounterAddin
             catch (Exception ex)
             {
                 return new LandClearingResult(false, false, 0, null, ex.Message);
+            }
+        }
+
+        // Shells out to backend/detect_roads.py (road_extraction.py's chunked ExG-low
+        // mask reused from land_clearing.py + skimage skeletonize + arcpy's own
+        // RasterToPolyline) - same subprocess/PROGRESS/STAGE/cancel contract as
+        // RunLandClearingAsync above, just a different script and result shape
+        // (polylines, not polygons).
+        public static async Task<RoadExtractionResult> RunRoadExtractionAsync(
+            RoadExtractionRequest request, Action<int> onProgress = null, Action<string> onStage = null,
+            CancellationToken cancellationToken = default)
+        {
+            var pythonExe = File.Exists(ProPythonExe) ? ProPythonExe : "python";
+            var scriptPath = Path.GetFullPath(DetectRoadsScript);
+
+            if (!File.Exists(scriptPath))
+                return new RoadExtractionResult(false, false, 0, null, $"Script not found: {scriptPath}");
+
+            var summaryPath = Path.Combine(Path.GetTempPath(), $"road_extraction_{Guid.NewGuid():N}.json");
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = pythonExe,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            psi.ArgumentList.Add(scriptPath);
+            psi.ArgumentList.Add("--raster"); psi.ArgumentList.Add(request.RasterPath);
+            psi.ArgumentList.Add("--output-fc"); psi.ArgumentList.Add(request.OutputFc);
+            psi.ArgumentList.Add("--summary"); psi.ArgumentList.Add(summaryPath);
+            psi.ArgumentList.Add("--exg-threshold"); psi.ArgumentList.Add(request.ExgThreshold.ToString(CultureInfo.InvariantCulture));
+            psi.ArgumentList.Add("--smooth-px"); psi.ArgumentList.Add(request.SmoothPx.ToString(CultureInfo.InvariantCulture));
+            psi.ArgumentList.Add("--min-dangle-m"); psi.ArgumentList.Add(request.MinDangleM.ToString(CultureInfo.InvariantCulture));
+
+            try
+            {
+                using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+                process.OutputDataReceived += (_, e) =>
+                {
+                    if (e.Data == null) return;
+                    if (e.Data.StartsWith("PROGRESS ") && int.TryParse(e.Data.AsSpan(9), out var pct))
+                        onProgress?.Invoke(pct);
+                    else if (e.Data.StartsWith("STAGE "))
+                        onStage?.Invoke(e.Data[6..]);
+                };
+                process.Start();
+                process.BeginOutputReadLine();
+
+                using var cancelRegistration = cancellationToken.Register(() =>
+                {
+                    try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+                    catch { /* already exited */ }
+                });
+
+                var stderr = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (cancellationToken.IsCancellationRequested)
+                    return new RoadExtractionResult(false, true, 0, null, "Cancelled.");
+
+                if (process.ExitCode != 0)
+                {
+                    var message = string.IsNullOrWhiteSpace(stderr)
+                        ? $"python.exe exited with code {process.ExitCode} and no error output (possible out-of-memory or native crash)."
+                        : stderr;
+                    return new RoadExtractionResult(false, false, 0, null, message);
+                }
+
+                var json = await File.ReadAllTextAsync(summaryPath);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                return new RoadExtractionResult(
+                    true, false,
+                    root.GetProperty("line_count").GetInt32(),
+                    root.GetProperty("output_fc").GetString(),
+                    null,
+                    root.GetProperty("length_km").GetDouble());
+            }
+            catch (Exception ex)
+            {
+                return new RoadExtractionResult(false, false, 0, null, ex.Message);
             }
         }
 

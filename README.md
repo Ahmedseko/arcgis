@@ -157,6 +157,21 @@ status line shows "Cancelled."
   soil - see `WATER_BRIGHTNESS_MAX` in `backend/land_clearing.py`, added
   2026-08-03 after a real result flagged two ponds as "cleared"). *Cancel:
   yes.*
+- **Road/Trail Extraction** - pulls road/trail centerlines out of the same
+  bare-ground signal Land Clearing Detection uses (roads read as "cleared"
+  too), skeletonized down to a single line (`skimage.morphology.skeletonize`)
+  instead of a filled area, then vectorized with arcpy's own
+  `conversion.RasterToPolyline` GP tool - see `backend/road_extraction.py`.
+  Not a port of
+  [microsoft/RoadDetections](https://github.com/microsoft/RoadDetections)'s
+  own approach (its segmentation model is Keras/Python 3.6 trained on
+  100cm/px satellite imagery - the wrong resolution regime for our ~5cm/px
+  drone orthophotos); its C# geometry-generation module's job (thinning +
+  graph construction + graph optimization to turn a mask into a line
+  network) is already covered here by skimage + arcpy's own tool, no new
+  algorithm needed. Pick a raster layer, a minimum dangle length (drops
+  short stub segments skeletonize leaves at noisy mask edges), click
+  **Extract Roads**. *Cancel: yes.*
 - **Compare Changes** - change detection between two Tree Detection runs of
   the same site over time. Pick the old and new detection point layers and a
   match distance (meters - covers re-run centroid jitter, not just exact

@@ -276,6 +276,37 @@
                             </StackPanel>
                         </Expander>
 
+                        <Expander Header="Road/Trail Extraction" Style="{StaticResource SectionExpander}">
+                            <StackPanel Style="{StaticResource SectionContent}">
+                                <TextBlock Text="Extracts road/trail centerlines from bare-ground areas (same signal Land Clearing Detection uses) - skeletonized down to a single line down the middle of each road instead of a filled area."
+                                           Style="{StaticResource HintLine}"/>
+
+                                <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedRoadRasterLayer}" Margin="0,0,0,8"/>
+
+                                <TextBlock Text="Drop stubs shorter than (meters)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding MinDangleM}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Extract Roads" Command="{Binding ExtractRoadsCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="Cancel" Command="{Binding CancelRoadExtractionCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                            Visibility="{Binding IsExtractingRoads, Converter={StaticResource BoolToVis}}"/>
+                                </StackPanel>
+
+                                <Grid Margin="0,8,0,0" Visibility="{Binding IsExtractingRoads, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="40"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ProgressBar Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding RoadExtractionProgress}" Height="14"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding RoadExtractionProgress, StringFormat={}{0}%}"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <TextBlock Text="{Binding RoadExtractionStatus}" Style="{StaticResource StatusLine}"/>
+                            </StackPanel>
+                        </Expander>
+
                         <Expander Header="Compare Changes" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
                                 <TextBlock Text="Compares two Tree Detection runs of the same site over time - trees in the old run with no match nearby are likely felled/lost, trees in the new run with no match are likely new/regrowth."
