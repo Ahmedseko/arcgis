@@ -14,8 +14,10 @@ import numpy as np
 
 from road_extraction import (
     build_road_skeleton, extract_road_skeleton_raster,
-    _prune_skeleton_spurs, _remove_wide_regions,
+    _drop_short_bridges, _remove_wide_regions,
 )
+
+SR = arcpy.SpatialReference(32750)
 
 SIZE = 400
 PX_SIZE_M = 0.05
@@ -57,22 +59,48 @@ def test_remove_wide_regions_drops_quarry_keeps_narrow_road():
     assert not filtered[100, 170:190].any(), "wide quarry blob should be removed"
 
 
-def test_prune_removes_short_spur_keeps_real_branch():
-    # Pure-numpy skeleton (no raster round trip needed - _prune_skeleton_spurs doesn't
-    # touch arcpy): a 100px main line, a 5px "noise" spur off it, and a 20px real branch.
-    # Pruning with iterations=8 should erase the 5px spur entirely but leave most of the
-    # 20px branch intact (only its tip erodes) - proves it tells noise from a real fork
-    # by length, the same problem the 65-fragment real result (2026-08-10) had.
-    skeleton = np.zeros((100, 100), dtype=np.uint8)
-    skeleton[50, 0:100] = 1  # main line, row 50
-    skeleton[45:50, 50] = 1  # 5px noise spur off column 50
-    skeleton[50:70, 80] = 1  # 20px real branch off column 80
+def test_drop_short_bridges_removes_bridge_keeps_dangles():
+    # A real result (2026-08-11) showed RasterToPolyline's own minimum_dangle_length
+    # doesn't touch a short segment bridging two junctions (only free-hanging dangles) -
+    # a raster/pixel-level fix for this (checked in briefly, then reverted) turned out
+    # unreliable (see road_extraction.py's module docstring on why), so this operates on
+    # the vectorized output instead: junction A --3m bridge-- junction B, each also
+    # connected to a long (50m) dangling arm plus junction A has an extra 30m branch.
+    # Only the 3m bridge should be deleted - the dangling arms/branch survive untouched
+    # (matching RasterToPolyline's own dangle-keeping behavior for anything long enough).
+    with tempfile.TemporaryDirectory() as tmp:
+        gdb = os.path.join(tmp, "scratch.gdb")
+        arcpy.management.CreateFileGDB(tmp, "scratch.gdb")
+        fc = os.path.join(gdb, "roads")
+        arcpy.management.CreateFeatureclass(gdb, "roads", "POLYLINE", spatial_reference=SR)
 
-    pruned = _prune_skeleton_spurs(skeleton, iterations=8)
+        BASE = (500000, 9200000)
+        a = arcpy.Point(*BASE)
+        b = arcpy.Point(BASE[0] + 3, BASE[1])
+        left_end = arcpy.Point(BASE[0] - 50, BASE[1])
+        right_end = arcpy.Point(BASE[0] + 53, BASE[1])
+        branch_end = arcpy.Point(BASE[0], BASE[1] + 30)
 
-    assert pruned[45:48, 50].sum() == 0, "short noise spur should be fully removed"
-    assert pruned[50, 20:80].sum() > 50, "main line should survive mostly intact"
-    assert pruned[50:62, 80].sum() > 10, "real 20px branch should mostly survive, not be treated as noise"
+        lines = {
+            "main_left": (left_end, a),
+            "main_right": (b, right_end),
+            "bridge": (a, b),
+            "long_branch": (a, branch_end),
+        }
+        with arcpy.da.InsertCursor(fc, ["SHAPE@"]) as cursor:
+            for p0, p1 in lines.values():
+                cursor.insertRow([arcpy.Polyline(arcpy.Array([p0, p1]), SR)])
+
+        _drop_short_bridges(fc, min_length_m=5.0)
+
+        assert int(arcpy.management.GetCount(fc)[0]) == 3, "only the 3m bridge should be deleted"
+        total_length_m = 0.0
+        with arcpy.da.SearchCursor(fc, ["SHAPE@LENGTH"]) as cursor:
+            for (length,) in cursor:
+                total_length_m += length
+        assert abs(total_length_m - 130.0) < 0.01, f"remaining 3 lines should total 130m, got {total_length_m}"
+
+        arcpy.management.ClearWorkspaceCache(gdb)
 
 
 def test_skeleton_follows_strip_centerline():
@@ -101,14 +129,9 @@ def test_full_pipeline_vectorizes_to_polyline():
         skel_raster = os.path.join(gdb, "RoadSkeleton_tmp")
         out_fc = os.path.join(gdb, "roads")
 
-        # prune_length_m=0 (disabled): this test's own strip spans the raster's full
-        # 20m width, so both its ends touch the raster boundary and read as "endpoints"
-        # to _prune_skeleton_spurs the same as a real free-hanging spur would - pruning
-        # is exercised by its own dedicated unit test above instead, on a synthetic
-        # skeleton large enough that a real interior spur is distinguishable from a
-        # raster-edge cutoff.
-        extract_road_skeleton_raster(tif_path, skel_raster, exg_threshold=18, smooth_px=0, prune_length_m=0)
+        extract_road_skeleton_raster(tif_path, skel_raster, exg_threshold=18, smooth_px=0)
         arcpy.conversion.RasterToPolyline(skel_raster, out_fc, "ZERO", 5.0, "SIMPLIFY")
+        _drop_short_bridges(out_fc, min_length_m=5.0)
 
         count = int(arcpy.management.GetCount(out_fc)[0])
         assert count > 0, "no road centerline features produced"
@@ -125,7 +148,7 @@ def test_full_pipeline_vectorizes_to_polyline():
 
 if __name__ == "__main__":
     test_remove_wide_regions_drops_quarry_keeps_narrow_road()
-    test_prune_removes_short_spur_keeps_real_branch()
+    test_drop_short_bridges_removes_bridge_keeps_dangles()
     test_skeleton_follows_strip_centerline()
     test_full_pipeline_vectorizes_to_polyline()
     print("OK")

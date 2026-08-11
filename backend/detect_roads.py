@@ -17,7 +17,7 @@ import sys
 import arcpy
 
 from land_clearing import DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX
-from road_extraction import extract_road_skeleton_raster, PRUNE_LENGTH_M, MAX_ROAD_WIDTH_M
+from road_extraction import extract_road_skeleton_raster, _drop_short_bridges, MAX_ROAD_WIDTH_M
 
 
 def main() -> int:
@@ -28,9 +28,7 @@ def main() -> int:
     parser.add_argument("--exg-threshold", type=float, default=DEFAULT_EXG_THRESHOLD)
     parser.add_argument("--smooth-px", type=float, default=DEFAULT_SMOOTH_PX)
     parser.add_argument("--min-dangle-m", type=float, default=5.0,
-                         help="Drop dangling line stubs shorter than this (skeletonize noise)")
-    parser.add_argument("--prune-length-m", type=float, default=PRUNE_LENGTH_M,
-                         help="Erode skeleton spurs/specks shorter than this before vectorizing (see road_extraction.py)")
+                         help="Drop dangling stubs and short inter-junction bridges shorter than this (skeletonize noise)")
     parser.add_argument("--max-width-m", type=float, default=MAX_ROAD_WIDTH_M,
                          help="Drop bare-ground regions wider than this (quarry pits, wide cleared yards - not roads; see road_extraction.py). 0 disables.")
     args = parser.parse_args()
@@ -45,7 +43,7 @@ def main() -> int:
         print("STAGE Scanning for road/trail centerlines...", flush=True)
         extract_road_skeleton_raster(
             args.raster, skel_raster, exg_threshold=args.exg_threshold, smooth_px=args.smooth_px,
-            prune_length_m=args.prune_length_m, max_width_m=args.max_width_m,
+            max_width_m=args.max_width_m,
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True))
         print("PROGRESS 96", flush=True)
 
@@ -55,6 +53,11 @@ def main() -> int:
         # on RasterToPolygon: NO_SIMPLIFY traces the exact pixel staircase at ~0.05m/px.
         arcpy.conversion.RasterToPolyline(skel_raster, args.output_fc, "ZERO", args.min_dangle_m, "SIMPLIFY")
         arcpy.management.Delete(skel_raster)
+
+        # RasterToPolyline's own minimum_dangle_length only drops dangling stubs (one
+        # free end) - this catches the other shape skeletonize noise takes, a short
+        # segment bridging two nearby junctions (see _drop_short_bridges).
+        _drop_short_bridges(args.output_fc, args.min_dangle_m)
 
         count = int(arcpy.management.GetCount(args.output_fc)[0])
         total_length_m = 0.0

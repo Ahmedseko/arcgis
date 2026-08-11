@@ -176,15 +176,24 @@ status line shows "Cancelled."
   First real-orthophoto result (2026-08-10): correctly traced a real road
   including a real fork into a connected bare clearing, but fragmented into
   65 separate line segments - most of the extras were short (<10-15m)
-  "hair" spurs, a normal skeletonize artifact from any mask whose edge
-  isn't perfectly smooth, not real forks. Fixed with
-  `_prune_skeleton_spurs` in `road_extraction.py`: iteratively erodes free
-  skeleton endpoints for `PRUNE_LENGTH_M` (8m, picked by eye against this
-  one result - not swept against ground truth) worth of pixels before
-  vectorizing, so a spur shorter than that vanishes entirely while a real
-  through-line only loses a few meters off its own tips.
-  `RasterToPolyline`'s own `minimum_dangle_length` stays as a second,
-  coarser safety net on whatever's left.
+  fragments, a normal skeletonize artifact from any mask whose edge isn't
+  perfectly smooth, not real forks. A first fix attempt
+  (`_prune_skeleton_spurs`, pixel-level: iteratively erode free skeleton
+  endpoints before vectorizing) barely helped (65 -> 63) - it turned out
+  most of the fragments were short segments bridging two nearby junctions
+  (both ends already connected to something else), not free-hanging spurs,
+  and a branch pixel diagonally touching two unrelated columns of a long
+  straight line is indistinguishable, by simple 8-connected neighbor
+  counting, from a real 3-way junction - so short bridges kept surviving
+  misclassified as junctions. Replaced (2026-08-11) with
+  `_drop_short_bridges` in `road_extraction.py`, operating on the
+  *vectorized* output instead: polyline endpoints from `RasterToPolyline`
+  are exact float coordinates, no pixel-adjacency ambiguity to get wrong.
+  Deletes any line under `--min-dangle-m` (reuses the same knob
+  `RasterToPolyline`'s own `minimum_dangle_length` already exposes) whose
+  *both* endpoints are shared with another line - the shape
+  `minimum_dangle_length` itself can't catch (it only drops dangling stubs
+  with one free end).
 
   Same result, second problem: the line also visibly wandered off the
   actual road surface into the wide bare dirt/quarry/stockpile ground
