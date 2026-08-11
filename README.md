@@ -263,6 +263,13 @@ names either (only the group's).
   made no measurable difference (F1 flat at 60.3%) - left at its existing
   5m default. Sweep scripts left as reference logic, not checked in - same
   precedent as `land_clearing.py`'s own tuning script.
+
+  A learned (not just ExG-threshold) road mask is the obvious next lever if
+  60.3% F1 isn't enough - `backend/training/road_segmentation_massachusetts.ipynb`
+  is a Kaggle notebook (free GPU) that trains a small U-Net for exactly this
+  on a resolution-matched public dataset, exporting to ONNX so it can plug
+  into `road_extraction.py` the same way `sawit_detector.onnx` already does
+  for oil palm - not run/wired in yet, see `backend/training/README.md`.
 - **Compare Changes** - change detection between two Tree Detection runs of
   the same site over time. Pick the old and new detection point layers and a
   match distance (meters - covers re-run centroid jitter, not just exact
