@@ -102,8 +102,12 @@ themselves. A `"⭐ "` name-prefix approach was considered first and rejected
 - a layer's Name also drives its legend text in a printed layout, so
 favoriting something would silently change what prints on a map. Favorites
 instead live entirely in the add-in (`FavoritesStore.cs`, a local JSON file
-keyed by project path so different projects' favorites don't mix): pick a
-layer from the dropdown and click **★ Add**, then toggle its checkbox to
+keyed by project path so different projects' favorites don't mix): type in
+the **Search layer** box to filter the picker down by name (a real map with
+enough layers made scrolling the full list to find one tedious - a plain
+editable ComboBox's own text search only jumps to the first *prefix* match,
+it doesn't narrow the list), pick a layer from the dropdown and click
+**★ Add**, then toggle its checkbox to
 show/hide it or click **✕** to un-favorite - the actual `Layer.Name`/legend
 text is never modified. Its own tab rather than a persistent section above
 the tab bar (tried first) - a long favorites list would otherwise push the

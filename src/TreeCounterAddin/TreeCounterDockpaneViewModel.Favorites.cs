@@ -2,6 +2,7 @@ using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -52,6 +53,33 @@ namespace TreeCounterAddin
         // etc. (which are filtered by geometry type for feature-specific pickers) since a
         // favorite can be any kind of layer.
         public ObservableCollection<string> AllLayerNames { get; } = new();
+
+        // Substring filter over AllLayerNames for the "pick a layer to favorite" combo -
+        // added after a real map turned out to have enough layers that scrolling the full
+        // list to find one got tedious (a plain editable ComboBox's built-in text search
+        // only jumps to the first *prefix* match, it doesn't narrow the dropdown itself).
+        private string _layerSearchText = "";
+        public string LayerSearchText
+        {
+            get => _layerSearchText;
+            set
+            {
+                if (SetProperty(ref _layerSearchText, value))
+                    RefreshFilteredLayerNames();
+            }
+        }
+
+        public ObservableCollection<string> FilteredLayerNames { get; } = new();
+
+        private void RefreshFilteredLayerNames()
+        {
+            FilteredLayerNames.Clear();
+            var matches = string.IsNullOrWhiteSpace(LayerSearchText)
+                ? AllLayerNames
+                : AllLayerNames.Where(n => n.Contains(LayerSearchText, StringComparison.OrdinalIgnoreCase));
+            foreach (var name in matches)
+                FilteredLayerNames.Add(name);
+        }
 
         private string _selectedLayerToFavorite;
         public string SelectedLayerToFavorite
@@ -122,6 +150,7 @@ namespace TreeCounterAddin
             AllLayerNames.Clear();
             foreach (var (name, _) in allLayers)
                 AllLayerNames.Add(name);
+            RefreshFilteredLayerNames();
 
             var project = Project.Current;
             if (project != null && project.URI != _favoritesLoadedForProjectUri)

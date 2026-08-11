@@ -183,13 +183,14 @@ namespace TreeCounterAddin
             ═══ FAVORITES TAB ═══
 
             Flags layers you use often, for a Contents pane that otherwise fills up with
-            one-off results over time. Pick a layer from the dropdown and click "★ Add" -
-            it appears in the list below with a checkbox (toggles that layer's visibility
-            directly) and a "✕" button (removes it from Favorites). This never renames or
-            otherwise modifies the actual layer - a name-prefix approach was considered and
-            rejected because a layer's Name also drives its legend text in a printed
-            layout, so favoriting something would have silently changed what prints on a
-            map. Favorites are remembered per project (a small file on this computer,
+            one-off results over time. Type in "Search layer" to filter the picker down by
+            name if the map has a lot of layers, pick one from the dropdown, and click
+            "★ Add" - it appears in the list below with a checkbox (toggles that layer's
+            visibility directly) and a "✕" button (removes it from Favorites). This never
+            renames or otherwise modifies the actual layer - a name-prefix approach was
+            considered and rejected because a layer's Name also drives its legend text in a
+            printed layout, so favoriting something would have silently changed what prints
+            on a map. Favorites are remembered per project (a small file on this computer,
             nothing written into the project itself).
 
 
@@ -378,15 +379,16 @@ namespace TreeCounterAddin
             ═══ TAB FAVORITES ═══
 
             Menandai layer yang sering Anda pakai, supaya Contents pane yang lama-lama
-            penuh hasil sekali-pakai tetap mudah ditelusuri. Pilih layer dari dropdown lalu
-            klik "★ Add" - layer itu muncul di daftar bawah dengan checkbox (langsung
-            toggle visibility layer itu) dan tombol "✕" (hapus dari Favorites). Ini tidak
-            pernah rename atau mengubah layer aslinya sama sekali - pendekatan awal (kasih
-            prefix nama bintang) sempat dipertimbangkan lalu dibatalkan karena Name sebuah
-            layer juga menentukan teks legend-nya di layout cetak, jadi favoritkan sesuatu
-            akan diam-diam mengubah apa yang tercetak di peta. Favorites diingat per
-            project (file kecil di komputer ini, tidak ditulis ke dalam project itu
-            sendiri).
+            penuh hasil sekali-pakai tetap mudah ditelusuri. Ketik di kotak "Search layer"
+            untuk menyaring dropdown-nya berdasarkan nama kalau map-nya sudah punya banyak
+            layer, pilih satu dari dropdown, lalu klik "★ Add" - layer itu muncul di daftar
+            bawah dengan checkbox (langsung toggle visibility layer itu) dan tombol "✕"
+            (hapus dari Favorites). Ini tidak pernah rename atau mengubah layer aslinya sama
+            sekali - pendekatan awal (kasih prefix nama bintang) sempat dipertimbangkan lalu
+            dibatalkan karena Name sebuah layer juga menentukan teks legend-nya di layout
+            cetak, jadi favoritkan sesuatu akan diam-diam mengubah apa yang tercetak di
+            peta. Favorites diingat per project (file kecil di komputer ini, tidak ditulis
+            ke dalam project itu sendiri).
 
 
             ═══ TAB SETTINGS ═══

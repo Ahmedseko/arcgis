@@ -443,8 +443,11 @@
                      headers themselves out of view. -->
                 <TabItem Header="Favorites">
                     <StackPanel Style="{StaticResource TabContent}">
+                        <TextBlock Text="Search layer" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Text="{Binding LayerSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Margin="0,0,0,4" ToolTip="Filter the layer list below by name"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <ComboBox ItemsSource="{Binding AllLayerNames}" SelectedItem="{Binding SelectedLayerToFavorite}" Width="180"/>
+                            <ComboBox ItemsSource="{Binding FilteredLayerNames}" SelectedItem="{Binding SelectedLayerToFavorite}" Width="180"/>
                             <Button Content="★ Add" Command="{Binding AddFavoriteCommand}" Padding="8,2" Margin="6,0,0,0" FontSize="11"/>
                         </StackPanel>
 
