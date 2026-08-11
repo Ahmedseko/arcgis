@@ -34,6 +34,12 @@ def main() -> int:
                          help="Drop dangling stubs and short inter-junction bridges shorter than this (skeletonize noise)")
     parser.add_argument("--max-width-m", type=float, default=MAX_ROAD_WIDTH_M,
                          help="Drop bare-ground regions wider than this (quarry pits, wide cleared yards - not roads; see road_extraction.py). 0 disables.")
+    parser.add_argument("--mask-source", choices=["exg", "unet"], default="exg",
+                         help="'unet' uses road_unet.onnx (see backend/training/) instead of the ExG threshold - "
+                              "not yet fine-tuned on local imagery, measured worse than 'exg' on real ground truth "
+                              "(README's Road/Trail Extraction accuracy section), opt-in until that changes")
+    parser.add_argument("--unet-threshold", type=float, default=0.5,
+                         help="Road-probability cutoff for --mask-source unet")
     args = parser.parse_args()
 
     try:
@@ -46,7 +52,7 @@ def main() -> int:
         print("STAGE Scanning for road/trail centerlines...", flush=True)
         extract_road_skeleton_raster(
             args.raster, skel_raster, exg_threshold=args.exg_threshold, smooth_px=args.smooth_px,
-            max_width_m=args.max_width_m,
+            max_width_m=args.max_width_m, mask_source=args.mask_source, unet_threshold=args.unet_threshold,
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True))
         print("PROGRESS 96", flush=True)
 

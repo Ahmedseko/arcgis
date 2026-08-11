@@ -133,14 +133,25 @@ def _drop_short_bridges(fc, min_length_m, max_passes=5):
 
 def build_road_skeleton(raster_path, exg_threshold=DEFAULT_ROAD_EXG_THRESHOLD,
                          smooth_px=DEFAULT_SMOOTH_PX, max_width_m=MAX_ROAD_WIDTH_M,
-                         progress_cb=None):
+                         mask_source="exg", unet_threshold=0.5, progress_cb=None):
     """
     Returns (skeleton, info): skeleton is a full-raster-size uint8 array (1 = centerline
     pixel), info is the RasterInfo - same shape/indexing as land_clearing.build_cleared_mask.
+
+    mask_source="exg" (default) uses land_clearing.build_cleared_mask, same as always.
+    mask_source="unet" uses road_unet.build_unet_mask instead - a model trained on the
+    Massachusetts Roads Dataset (see backend/training/), evaluated but not yet the
+    default (see README's Road/Trail Extraction accuracy section for how the two
+    compare on real ground truth) - requires road_unet.onnx + onnxruntime, same
+    "optional model, lazy import" pattern as yolo_detector.py's oil-palm model.
     """
     mask_progress = (lambda p: progress_cb(int(p * 0.85))) if progress_cb else None
-    mask, info = build_cleared_mask(raster_path, exg_threshold=exg_threshold,
-                                     smooth_px=smooth_px, progress_cb=mask_progress)
+    if mask_source == "unet":
+        from road_unet import build_unet_mask
+        mask, info = build_unet_mask(raster_path, threshold=unet_threshold, progress_cb=mask_progress)
+    else:
+        mask, info = build_cleared_mask(raster_path, exg_threshold=exg_threshold,
+                                         smooth_px=smooth_px, progress_cb=mask_progress)
     if progress_cb:
         progress_cb(88)
     if max_width_m and info.px_size > 0:
@@ -156,7 +167,7 @@ def build_road_skeleton(raster_path, exg_threshold=DEFAULT_ROAD_EXG_THRESHOLD,
 
 def extract_road_skeleton_raster(raster_path, output_mask_raster, exg_threshold=DEFAULT_ROAD_EXG_THRESHOLD,
                                   smooth_px=DEFAULT_SMOOTH_PX, max_width_m=MAX_ROAD_WIDTH_M,
-                                  progress_cb=None):
+                                  mask_source="exg", unet_threshold=0.5, progress_cb=None):
     """
     Writes the skeleton (see build_road_skeleton) as a single-band raster to
     output_mask_raster (same extent/spatial reference as raster_path): 1 = centerline
@@ -164,8 +175,8 @@ def extract_road_skeleton_raster(raster_path, output_mask_raster, exg_threshold=
     out the same way so detect_roads.py's CLI only has to add the RasterToPolyline step.
     Returns output_mask_raster.
     """
-    skeleton, info = build_road_skeleton(raster_path, exg_threshold, smooth_px,
-                                          max_width_m, progress_cb)
+    skeleton, info = build_road_skeleton(raster_path, exg_threshold, smooth_px, max_width_m,
+                                          mask_source, unet_threshold, progress_cb)
     lower_left = arcpy.Point(info.xmin, info.ymax - info.H * info.px_size)
     raster = arcpy.NumPyArrayToRaster(skeleton, lower_left, info.px_size, info.px_size, value_to_nodata=0)
     raster.save(output_mask_raster)

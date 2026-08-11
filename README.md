@@ -264,12 +264,24 @@ names either (only the group's).
   5m default. Sweep scripts left as reference logic, not checked in - same
   precedent as `land_clearing.py`'s own tuning script.
 
-  A learned (not just ExG-threshold) road mask is the obvious next lever if
-  60.3% F1 isn't enough - `backend/training/road_segmentation_massachusetts.ipynb`
-  is a Kaggle notebook (free GPU) that trains a small U-Net for exactly this
-  on a resolution-matched public dataset, exporting to ONNX so it can plug
-  into `road_extraction.py` the same way `sawit_detector.onnx` already does
-  for oil palm - not run/wired in yet, see `backend/training/README.md`.
+  A learned (not just ExG-threshold) road mask was the obvious next lever to
+  try - `backend/training/road_segmentation_massachusetts.ipynb` (Kaggle,
+  free GPU) trains a small U-Net for exactly this on a resolution-matched
+  public dataset, exporting to ONNX (`backend/road_unet.py` +
+  `backend/road_unet.onnx`, wired in as `mask_source="unet"` /
+  `--mask-source unet`, same "optional model, lazy import" pattern as
+  `yolo_detector.py`'s oil-palm model). Trained (2026-08-12) and measured
+  against the same real ground truth: at a 10m buffer, correctness jumped to
+  80.2% (vs. ExG's 49.8% - when it says "road" it's usually right) but
+  completeness dropped to 23.5% (vs. ExG's 57.9% - it misses most of the
+  road), net F1 36.3% - **worse** than the ExG baseline's 53.5%, so it stays
+  opt-in rather than becoming the default. Makes sense: this base model has
+  only ever seen Massachusetts roads, nothing resembling an Indonesian
+  logging/mining haul road, and is conservative about what it's willing to
+  call "road" as a result. The high correctness is the encouraging part -
+  fine-tuning it on real local ground truth (the notebook's own "Next
+  steps" section) is the natural next step before writing this approach
+  off, not confirmation it can't work.
 - **Compare Changes** - change detection between two Tree Detection runs of
   the same site over time. Pick the old and new detection point layers and a
   match distance (meters - covers re-run centroid jitter, not just exact
@@ -471,3 +483,12 @@ in the DockPane.
   nearest-neighbor matching was already ported, just needed
   `backend/compare_detections.py` (CLI) + `PythonBackendService`/DockPane
   wiring (2026-08-03).
+
+## License
+
+[MIT](LICENSE) - the add-in code (C#/.NET UI, `PythonBackendService`, etc.) is original
+to this repo. The detection algorithms in `backend/` are ported from the QGIS plugin
+LandTree Analyzer (see `backend/*.py` module docstrings for which functions came from
+where) - verify that plugin's own license terms before redistributing this project if
+that matters for your use case, since porting doesn't change what license the original
+logic itself was under.
