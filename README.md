@@ -83,15 +83,33 @@ Analyze/Settings tabs.)
 ## Features & Usage
 
 Open the panel via the **Forestry Toolkit** ribbon tab -> **Forestry Toolkit**
-button (large, left). It has 4 tabs: **Prepare**, **Field Data**, **Analyze**,
-**Settings**. Every long-running feature shows its progress/result in a status
-line under its own section; click **Refresh** (top of the panel) any time a
-layer you just added doesn't show up in a dropdown yet.
+button (large, left). It has 6 tabs: **Prepare**, **Field Data**, **Analyze**,
+**Settings**, **Help** (a full how-to-use guide, English/Indonesian), **About**.
+Every long-running feature shows its progress/result in a status line under
+its own section. The raster/polygon/point/line layer dropdowns refresh
+themselves automatically on map switch or layer add/remove; **Refresh** (top
+of the panel) is still there for the rare case something doesn't update on
+its own.
 
 **Cancel**, where available, stops the operation after its *current* step
 finishes (e.g. mid-way through a chain of GP tool calls) - it's cooperative
 cancellation, not an instant kill, so there can be a short delay before the
 status line shows "Cancelled."
+
+**Favorites** (below the Layers/Refresh bar, above the tabs - always visible
+regardless of which tab is open): flags layers you use often in a Contents
+pane that's otherwise cluttered with one-off results, without touching the
+layers themselves. A `"⭐ "` name-prefix approach was considered first and
+rejected - a layer's Name also drives its legend text in a printed layout, so
+favoriting something would silently change what prints on a map. Favorites
+instead live entirely in the add-in (`FavoritesStore.cs`, a local JSON file
+keyed by project path so different projects' favorites don't mix), and get
+their own quick-access list: pick a layer from the dropdown and click
+**★ Add**, then toggle its checkbox to show/hide it or click **✕** to
+un-favorite - the actual `Layer.Name`/legend text is never modified. A
+plain ArcGIS Pro Group Layer (drag your common layers into one named e.g.
+"⭐ Favorites") is a zero-code alternative/complement worth knowing about
+too, since it doesn't touch the *layers'* names either (only the group's).
 
 ### Prepare tab
 

@@ -152,7 +152,7 @@ namespace TreeCounterAddin
                     return;
                 }
 
-                var (rasterNames, polygonNames, pointNames, polylineNames) = await QueuedTask.Run(() =>
+                var (rasterNames, polygonNames, pointNames, polylineNames, allLayers) = await QueuedTask.Run(() =>
                 {
                     var layers = MapView.Active.Map.GetLayersAsFlattenedList();
                     var rasters = layers.OfType<RasterLayer>().Select(l => l.Name).ToList();
@@ -165,8 +165,11 @@ namespace TreeCounterAddin
                     var polylines = layers.OfType<FeatureLayer>()
                         .Where(l => l.ShapeType == esriGeometryType.esriGeometryPolyline)
                         .Select(l => l.Name).ToList();
-                    return (rasters, polygons, points, polylines);
+                    var all = layers.Select(l => (l.Name, l.IsVisible)).ToList();
+                    return (rasters, polygons, points, polylines, all);
                 });
+
+                SyncFavorites(allLayers);
 
                 RasterLayers.Clear();
                 foreach (var name in rasterNames)

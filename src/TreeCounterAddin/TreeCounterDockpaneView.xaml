@@ -63,6 +63,36 @@
                         ToolTip="Refresh the raster/polygon/point layer lists used throughout this panel"/>
             </DockPanel>
 
+            <!-- Marks layers the user cares about without touching the layer itself (no rename -
+                 a layer's Name also drives its legend text in a layout, so a "⭐ " prefix would
+                 silently show up there too) - lives entirely in this add-in, see FavoritesStore. -->
+            <Expander Header="Favorites" Style="{StaticResource SectionExpander}">
+                <StackPanel Style="{StaticResource SectionContent}">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <ComboBox ItemsSource="{Binding AllLayerNames}" SelectedItem="{Binding SelectedLayerToFavorite}" Width="180"/>
+                        <Button Content="★ Add" Command="{Binding AddFavoriteCommand}" Padding="8,2" Margin="6,0,0,0" FontSize="11"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding FavoriteLayers}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,2" LastChildFill="True">
+                                    <Button Content="✕" DockPanel.Dock="Right" Padding="4,0" Margin="4,0,0,0" FontSize="10"
+                                            ToolTip="Remove from Favorites"
+                                            Command="{Binding DataContext.RemoveFavoriteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}"/>
+                                    <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsVisible, Mode=OneWay}"
+                                              ToolTip="Toggle this layer's visibility"
+                                              Command="{Binding DataContext.ToggleFavoriteVisibilityCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                              CommandParameter="{Binding}"/>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Margin="4,0,0,0" TextTrimming="CharacterEllipsis"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Expander>
+
             <!-- Grouped by where each feature sits in the field workflow: get the area ready,
                  bring field data back in, run analysis on it, then the rarely-touched settings. -->
             <TabControl>
