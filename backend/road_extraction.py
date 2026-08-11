@@ -19,7 +19,24 @@ import numpy as np
 from scipy import ndimage
 from skimage.morphology import skeletonize
 
-from land_clearing import build_cleared_mask, DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX
+from land_clearing import build_cleared_mask, DEFAULT_SMOOTH_PX
+
+# Deliberately NOT land_clearing.DEFAULT_EXG_THRESHOLD (18) - that value is tuned for
+# accurate AREA overlap with human-digitized clearing polygons (a different accuracy
+# target), not centerline position. Validated instead (2026-08-11) against a real
+# human-digitized road shapefile (hasil digit/digitasi jalan.shp, ~6.2km, 11 segments)
+# over its actual source orthophoto (260726_Bypass AKT_1m.tif) using the standard
+# "buffer method" road-network accuracy metric (Wiedemann et al. 1998 - completeness =
+# ground-truth length within a buffer of the extraction / total ground-truth length;
+# correctness = extraction length within a buffer of the ground truth / total extraction
+# length): sweeping exg_threshold from -10 to 30 (max_width_m=0, min_dangle_m=5, 10m
+# buffer) peaked at exg_threshold=8, F1 60.3% (correctness 58.3%/completeness 62.4%) vs.
+# 53.5% at the shared default of 18 - a stricter (lower) threshold shrinks the mask
+# closer to the actual driving surface, which matters more for a centerline (skeletonize
+# is sensitive to the full mask width) than it does for land_clearing.py's own area-
+# overlap target. min_dangle_m was swept too (3-15m) and made no measurable difference
+# (F1 flat at 60.3%) - left at its existing 5m default.
+DEFAULT_ROAD_EXG_THRESHOLD = 8
 
 # Real result (2026-08-10, a real orthophoto with one road + one fork near a small
 # clearing): skeletonize produced 65 line segments, most of them short fragments (many
@@ -47,14 +64,17 @@ from land_clearing import build_cleared_mask, DEFAULT_EXG_THRESHOLD, DEFAULT_SMO
 # fact - same idea real river-centerline extraction uses to exclude lakes from a water
 # mask before skeletonizing it into a channel network.
 #
-# ponytail: OFF by default (max_width_m=0 below), unlike PRUNE_LENGTH_M above - a first
-# attempt at 12m wiped an entire real road result to 0 features (2026-08-10): on that
-# site the bare-ground corridor (road + graded shoulder/embankment) runs wider than 24m
-# for long stretches, not just at isolated quarry pockets like assumed, so this one
-# blanket threshold can't tell "wide road" from "wide quarry" without more site-specific
-# tuning than a single guessed constant can give it. Same status as land_clearing.py's
-# fresh_color flag: a knob to try per-site (via detect_roads.py's --max-width-m), not a
-# default fix - producing a wandering-but-present line beats producing nothing.
+# ponytail: OFF by default (max_width_m=0 below), unlike DEFAULT_ROAD_EXG_THRESHOLD above
+# - a first attempt at 12m wiped an entire real road result to 0 features (2026-08-10).
+# Confirmed with real ground-truth numbers the next day (2026-08-11, same accuracy method
+# as DEFAULT_ROAD_EXG_THRESHOLD's own validation): every max_width_m value swept from 15
+# to 50m scored WORSE than 0 (F1 dropped from the 0-baseline's 53.5% to 0-18% across that
+# whole range) - on this site the bare-ground corridor (road + graded shoulder/
+# embankment) runs wider than 50m for long stretches, not just at isolated quarry
+# pockets like assumed, so this one blanket threshold can't tell "wide road" from "wide
+# quarry" here at any tested value. Same status as land_clearing.py's fresh_color flag: a
+# knob to try on a site with narrower quarry pockets (via detect_roads.py's
+# --max-width-m), not a default fix.
 MAX_ROAD_WIDTH_M = 0
 
 
@@ -111,7 +131,7 @@ def _drop_short_bridges(fc, min_length_m, max_passes=5):
                     cursor.deleteRow()
 
 
-def build_road_skeleton(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
+def build_road_skeleton(raster_path, exg_threshold=DEFAULT_ROAD_EXG_THRESHOLD,
                          smooth_px=DEFAULT_SMOOTH_PX, max_width_m=MAX_ROAD_WIDTH_M,
                          progress_cb=None):
     """
@@ -134,7 +154,7 @@ def build_road_skeleton(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
     return skeleton, info
 
 
-def extract_road_skeleton_raster(raster_path, output_mask_raster, exg_threshold=DEFAULT_EXG_THRESHOLD,
+def extract_road_skeleton_raster(raster_path, output_mask_raster, exg_threshold=DEFAULT_ROAD_EXG_THRESHOLD,
                                   smooth_px=DEFAULT_SMOOTH_PX, max_width_m=MAX_ROAD_WIDTH_M,
                                   progress_cb=None):
     """

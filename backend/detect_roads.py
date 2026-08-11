@@ -16,8 +16,11 @@ import sys
 
 import arcpy
 
-from land_clearing import DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX
-from road_extraction import extract_road_skeleton_raster, _drop_short_bridges, MAX_ROAD_WIDTH_M
+from land_clearing import DEFAULT_SMOOTH_PX
+from road_extraction import (
+    extract_road_skeleton_raster, _drop_short_bridges,
+    DEFAULT_ROAD_EXG_THRESHOLD, MAX_ROAD_WIDTH_M,
+)
 
 
 def main() -> int:
@@ -25,7 +28,7 @@ def main() -> int:
     parser.add_argument("--raster", required=True)
     parser.add_argument("--output-fc", required=True)
     parser.add_argument("--summary", required=True)
-    parser.add_argument("--exg-threshold", type=float, default=DEFAULT_EXG_THRESHOLD)
+    parser.add_argument("--exg-threshold", type=float, default=DEFAULT_ROAD_EXG_THRESHOLD)
     parser.add_argument("--smooth-px", type=float, default=DEFAULT_SMOOTH_PX)
     parser.add_argument("--min-dangle-m", type=float, default=5.0,
                          help="Drop dangling stubs and short inter-junction bridges shorter than this (skeletonize noise)")

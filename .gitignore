@@ -3,3 +3,7 @@ obj/
 *.esriAddinX
 __pycache__/
 .claude/
+
+# Ground-truth digitizing work (shapefiles etc.) - data, not code, same reason the
+# D:\Data Bukaan ground truth used for land_clearing.py's own tuning stays external too.
+/hasil digit/

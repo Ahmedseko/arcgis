@@ -97,7 +97,7 @@ namespace TreeCounterAddin
                 var outputFc = Path.Combine(project.DefaultGeodatabasePath, $"Roads_{stamp}");
 
                 var request = new RoadExtractionRequest(
-                    rasterPath, outputFc, DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX, MinDangleM);
+                    rasterPath, outputFc, ROAD_EXG_THRESHOLD, DEFAULT_SMOOTH_PX, MinDangleM);
 
                 var dispatcher = System.Windows.Application.Current.Dispatcher;
                 var result = await PythonBackendService.RunRoadExtractionAsync(
@@ -140,5 +140,14 @@ namespace TreeCounterAddin
                 IsExtractingRoads = false;
             }
         }
+
+        // Deliberately NOT LandClearing.cs's DEFAULT_EXG_THRESHOLD (18) - validated
+        // separately (2026-08-11, real ground truth: hasil digit/digitasi jalan.shp vs.
+        // its source orthophoto) against the standard road-network "buffer method"
+        // accuracy metric: exg_threshold=8 scored F1 60.3% vs. 53.5% at 18, since a
+        // centerline (skeletonize is sensitive to the full mask width) benefits from a
+        // stricter/narrower mask more than land_clearing.py's own area-overlap target
+        // does - see backend/road_extraction.py's DEFAULT_ROAD_EXG_THRESHOLD docstring.
+        private const double ROAD_EXG_THRESHOLD = 8;
     }
 }

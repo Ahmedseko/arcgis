@@ -214,6 +214,32 @@ status line shows "Cancelled."
   try per-site (`--max-width-m` on `detect_roads.py`'s CLI, not yet wired
   to the DockPane UI), not a default fix - a wandering-but-present line
   beats producing nothing.
+
+  First quantitative accuracy check (2026-08-11), same "buffer method"
+  road-network metric the `microsoft/RoadDetections` README itself reports
+  pixel precision/recall with (Wiedemann et al. 1998 - completeness =
+  ground-truth length within a buffer of the extraction / total
+  ground-truth length; correctness = extraction length within a buffer of
+  the ground truth / total extraction length), against a real
+  human-digitized road shapefile (`hasil digit/digitasi jalan.shp`, ~6.2km/
+  11 segments) over its actual source orthophoto
+  (`260726_Bypass AKT_1m.tif`, 1m/px - the same tile class
+  `land_clearing.py`'s own `OPENING_ITERATIONS` sweep used): at a 10m
+  buffer, the then-current defaults scored correctness 49.8%/completeness
+  57.9% (F1 53.5%). Confirmed `MAX_ROAD_WIDTH_M`'s off-by-default status
+  quantitatively (every value from 15-50m scored *worse* than 0, F1
+  dropping to 0-18%). Sweeping `exg_threshold` instead (the mask's own
+  vegetation-greenness cutoff) found a real, unrelated improvement: 8
+  peaked at F1 60.3% (correctness 58.3%/completeness 62.4%) vs. 53.5% at
+  the old default (18, shared with `land_clearing.py` at the time) - now
+  `road_extraction.DEFAULT_ROAD_EXG_THRESHOLD`, deliberately *not* shared
+  with `land_clearing.py`'s own `DEFAULT_EXG_THRESHOLD` anymore, since a
+  centerline (skeletonize is sensitive to the full mask width) benefits
+  from a stricter/narrower mask more than `land_clearing.py`'s own area-
+  overlap accuracy target does. `min_dangle_m` was swept too (3-15m) and
+  made no measurable difference (F1 flat at 60.3%) - left at its existing
+  5m default. Sweep scripts left as reference logic, not checked in - same
+  precedent as `land_clearing.py`'s own tuning script.
 - **Compare Changes** - change detection between two Tree Detection runs of
   the same site over time. Pick the old and new detection point layers and a
   match distance (meters - covers re-run centroid jitter, not just exact
