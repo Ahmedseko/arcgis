@@ -3,6 +3,7 @@ using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
+using ArcGIS.Desktop.Mapping.Events;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -19,6 +20,12 @@ namespace TreeCounterAddin
     internal partial class TreeCounterDockpaneViewModel : DockPane
     {
         private const string DockPaneId = "TreeCounterAddin_Dockpane";
+
+        // Single source of truth for the version string shown in both the ribbon's About
+        // button (RibbonControls.cs) and the panel's own About tab - keep this in sync with
+        // Config.daml's AddInInfo version by hand (DAML has no runtime-readable API for it
+        // that's simpler than just duplicating the literal).
+        public const string AppVersion = "0.1.0";
 
         public TreeCounterDockpaneViewModel()
         {
@@ -62,7 +69,22 @@ namespace TreeCounterAddin
             // refresh (right when the panel first opens) silently did nothing. Defer past
             // construction so Find() actually succeeds by the time subscribers run.
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => RibbonStateChanged?.Invoke());
+
+            // Auto-refresh the layer lists instead of relying on the user to remember to
+            // click Refresh - OnShow already covers "panel just opened", but that alone
+            // missed the common case of the panel already being pinned open from a saved
+            // layout (no OnShow(true) fires again on the next launch) or a layer being
+            // added/removed while the panel stays open (e.g. loading a new orthophoto, or
+            // this add-in's own result layers landing on the map after a detection run).
+            // This DockPane instance lives for the whole ArcGIS Pro session (DockPaneManager
+            // keeps one singleton, never disposed early), so subscribing once here without
+            // ever unsubscribing is the standard pattern - same as RibbonStateChanged above.
+            ActiveMapViewChangedEvent.Subscribe(_ => OnLayersOrMapChanged());
+            LayersAddedEvent.Subscribe(_ => OnLayersOrMapChanged());
+            LayersRemovedEvent.Subscribe(_ => OnLayersOrMapChanged());
         }
+
+        private async void OnLayersOrMapChanged() => await RefreshRasterLayersAsync();
 
         // See the constructor comment above - fired on every property change so ribbon
         // status labels stay live without depending on OnUpdate() timing.

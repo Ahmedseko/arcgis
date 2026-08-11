@@ -55,13 +55,12 @@ namespace TreeCounterAddin
         protected override void OnClick()
         {
             MessageBox.Show(
-                "Forestry Toolkit 0.1.0\n\n" +
-                "Detects and counts trees from drone orthophotos (ExG matched filter + " +
-                "YOLOv8 for oil palm), with optional Gemini/OpenAI/Claude vision validation. " +
-                "Also generates fishnet grids clipped to a planning polygon, for timber cruising.\n\n" +
-                "Open the panel via the Forestry Toolkit button to pick a raster layer and " +
-                "detection profile, then click Detect Trees - or pick a polygon layer and cell " +
-                "size, then click Create Fishnet.\n\n" +
+                $"Forestry Toolkit {TreeCounterDockpaneViewModel.AppVersion}\n\n" +
+                "Tree/oil palm detection, land clearing detection, road/trail extraction, " +
+                "change comparison, biomass & carbon estimation, cruising data import, and " +
+                "more - open the panel via the Forestry Toolkit button for the full toolset.\n\n" +
+                "See the panel's own Help and About tabs for a detailed how-to-use guide " +
+                "(English/Indonesian) and full technology/developer credits.\n\n" +
                 "Developer: Ahmed Seko",
                 "About Forestry Toolkit", MessageBoxButton.OK, MessageBoxImage.Information);
         }
