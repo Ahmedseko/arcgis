@@ -153,7 +153,11 @@ produced it) - add if the log alone isn't enough.
   if the default doesn't suit an elongated site) and altitude/GSD are
   independent inputs (this doesn't derive one from the other via camera
   focal length - keep them consistent with your drone's actual capture
-  settings yourself). *Cancel: no (a single in-memory geometry pass, no GP
+  settings yourself). Every parameter field has a hover tooltip explaining
+  it (`BilingualTooltipConverter.cs`) - reuses the same English/Indonesian
+  flag the Help tab exposes rather than adding a second language switch
+  just for tooltips, so the language picked there also drives these.
+  *Cancel: no (a single in-memory geometry pass, no GP
   tool chain to interrupt).*
 - **Fishnet Generator** - pick a planning polygon layer, set cell width/height
   (map units), click **Create Fishnet**. Generates a grid over the polygon's

@@ -3,10 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:TreeCounterAddin"
              mc:Ignorable="d"
              d:DesignHeight="620" d:DesignWidth="300">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <local:BilingualTooltipConverter x:Key="BilingualTooltip"/>
 
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,0,0,2"/>
@@ -92,24 +94,46 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Altitude (m)" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding FlightAltitudeM}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="GSD (cm/px)" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FlightGsdCmPerPx}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Image width (px)" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding FlightImageWidthPx}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Image height (px)" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding FlightImageHeightPx}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Front overlap (%)" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding FlightFrontOverlapPct}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Side overlap (%)" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding FlightSideOverlapPct}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Flight direction (deg, 0 = N-S lines)" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding FlightDirectionDeg}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Speed (m/s)" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding FlightSpeedMs}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Max flight time / battery (min)" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding MaxFlightMinutesPerBattery}" Margin="0,2"/>
+                                    <!-- ToolTip on both the label and the box (same bilingual lookup, see
+                                         BilingualTooltipConverter.cs) - hover either to see it, and it
+                                         switches language with whatever's picked on the Help tab
+                                         (IsHelpEnglish is shared app-wide, not a second language toggle). -->
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Altitude (m)" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Altitude}"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding FlightAltitudeM}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Altitude}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="GSD (cm/px)" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Gsd}"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FlightGsdCmPerPx}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Gsd}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Image width (px)" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=ImageWidth}"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding FlightImageWidthPx}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=ImageWidth}"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Image height (px)" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=ImageHeight}"/>
+                                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding FlightImageHeightPx}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=ImageHeight}"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Front overlap (%)" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=FrontOverlap}"/>
+                                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding FlightFrontOverlapPct}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=FrontOverlap}"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Side overlap (%)" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=SideOverlap}"/>
+                                    <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding FlightSideOverlapPct}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=SideOverlap}"/>
+                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Flight direction (deg, 0 = N-S lines)" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Direction}"/>
+                                    <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding FlightDirectionDeg}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Direction}"/>
+                                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Speed (m/s)" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Speed}"/>
+                                    <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding FlightSpeedMs}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Speed}"/>
+                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Max flight time / battery (min)" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Battery}"/>
+                                    <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding MaxFlightMinutesPerBattery}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Battery}"/>
                                 </Grid>
 
                                 <StackPanel Orientation="Horizontal">
