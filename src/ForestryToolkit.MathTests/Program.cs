@@ -93,6 +93,18 @@ var smallPlan = FlightMissionMath.GenerateCoveragePlan(
 Check("GenerateCoveragePlan: a survey area smaller than the line spacing still gets waypoints",
     smallPlan.Waypoints.Count > 0);
 
+// A real report (2026-08-14): the *actual* zero-waypoint cause turned out to be a
+// multi-feature layer where the wrong (tiny) feature got picked, not a genuinely too-small
+// single polygon - but the user asked for the tool to explain itself either way. This checks
+// the diagnostic message names real numbers instead of a generic "check your settings".
+var failureMessage = FlightMissionMath.DescribeCoverageFailure(
+    smallArea, gsdCmPerPx: 5, imageWidthPx: 4000, imageHeightPx: 3000,
+    frontOverlapPct: 80, sideOverlapPct: 70, flightDirectionDeg: 0);
+Check("DescribeCoverageFailure: names the computed line spacing for a too-small area",
+    failureMessage.Contains("60m"));
+Check("DescribeCoverageFailure: names the area's own size",
+    failureMessage.Contains("20m"));
+
 // A short battery budget on the same site must split the single-battery plan into more parts.
 var splitPlan = FlightMissionMath.GenerateCoveragePlan(
     surveyArea, new List<IReadOnlyList<(double X, double Y)>>(),

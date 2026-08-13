@@ -157,11 +157,43 @@ namespace TreeCounterAddin
                 var (plan, sr, error) = await QueuedTask.Run(() =>
                 {
                     using var featureClass = layer.GetFeatureClass();
-                    using var cursor = featureClass.Search(null, false);
-                    if (!cursor.MoveNext())
-                        return (null, null, "No features in the selected layer.");
-                    using var feature = (Feature)cursor.Current;
-                    if (feature.GetShape() is not Polygon poly)
+
+                    // A layer with several separate features (parcels/blocks) has no single
+                    // "the" survey boundary - silently flying whichever record the cursor
+                    // happens to return first is how a real report (2026-08-14, "Pengajuan RT
+                    // XLVI", 13 features from a 1,547 m2 sliver up to a 696,172 m2 block) ended
+                    // up planning a mission over a tiny, oddly-shaped parcel nobody meant to fly,
+                    // which then failed with a dead-end "no waypoints" message. Require an
+                    // explicit single-feature selection whenever the layer isn't unambiguous.
+                    var selection = layer.GetSelection();
+                    Polygon poly;
+                    if (selection != null && selection.GetCount() > 0)
+                    {
+                        if (selection.GetCount() > 1)
+                            return (null, null, $"{selection.GetCount()} features are selected in " +
+                                $"\"{layer.Name}\" - Flight Mission Planner flies one survey area at a time. " +
+                                "Select just the one block/parcel you want to fly and try again.");
+                        using var selCursor = selection.Search();
+                        selCursor.MoveNext();
+                        using var selFeature = (Feature)selCursor.Current;
+                        poly = selFeature.GetShape() as Polygon;
+                    }
+                    else
+                    {
+                        var total = featureClass.GetCount();
+                        if (total == 0)
+                            return (null, null, "No features in the selected layer.");
+                        if (total > 1)
+                            return (null, null, $"\"{layer.Name}\" has {total} features and none is " +
+                                "selected - Flight Mission Planner flies one survey area at a time. Select " +
+                                "the specific parcel/block on the map, then Generate Mission again.");
+                        using var cursor = featureClass.Search(null, false);
+                        cursor.MoveNext();
+                        using var onlyFeature = (Feature)cursor.Current;
+                        poly = onlyFeature.GetShape() as Polygon;
+                    }
+
+                    if (poly == null)
                         return (null, null, "Selected feature isn't a polygon.");
                     if (poly.SpatialReference == null || poly.SpatialReference.IsGeographic)
                         return (null, null, "The layer must be in a projected coordinate system (meters) - " +
@@ -185,17 +217,16 @@ namespace TreeCounterAddin
                         outer, holes, FlightAltitudeM, FlightGsdCmPerPx, FlightImageWidthPx, FlightImageHeightPx,
                         FlightFrontOverlapPct, FlightSideOverlapPct, FlightDirectionDeg, FlightSpeedMs,
                         MaxFlightMinutesPerBattery);
+                    if (generated.Waypoints.Count == 0)
+                        return (generated, poly.SpatialReference, "No waypoints generated. " +
+                            FlightMissionMath.DescribeCoverageFailure(outer, FlightGsdCmPerPx, FlightImageWidthPx,
+                                FlightImageHeightPx, FlightFrontOverlapPct, FlightSideOverlapPct, FlightDirectionDeg));
                     return (generated, poly.SpatialReference, (string)null);
                 });
 
                 if (error != null)
                 {
                     FlightMissionStatus = error;
-                    return;
-                }
-                if (plan.Waypoints.Count == 0)
-                {
-                    FlightMissionStatus = "No waypoints generated - check the overlap/GSD/image size settings.";
                     return;
                 }
 

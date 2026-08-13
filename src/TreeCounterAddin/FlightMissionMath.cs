@@ -173,5 +173,40 @@ namespace TreeCounterAddin
             var totalMinutes = speedMs > 0 ? totalDistanceM / speedMs / 60.0 : 0;
             return new Plan(waypoints, waypoints.Count == 0 ? 0 : missionPart, totalDistanceM, totalMinutes);
         }
+
+        /// <summary>
+        /// Builds a specific, actionable message for why GenerateCoveragePlan returned zero
+        /// waypoints, instead of leaving the caller with just "it didn't work" - compares the
+        /// survey area's own size (in the flight-direction-aligned frame) against the computed
+        /// line/waypoint spacing so the message can name real numbers and concrete knobs to try.
+        /// </summary>
+        public static string DescribeCoverageFailure(
+            IReadOnlyList<(double X, double Y)> outerRing,
+            double gsdCmPerPx, int imageWidthPx, int imageHeightPx,
+            double frontOverlapPct, double sideOverlapPct, double flightDirectionDeg)
+        {
+            var gsdM = gsdCmPerPx / 100.0;
+            var lineSpacingM = Math.Max(0.5, gsdM * imageWidthPx * (1 - Math.Min(sideOverlapPct, 95) / 100.0));
+            var waypointSpacingM = Math.Max(0.5, gsdM * imageHeightPx * (1 - Math.Min(frontOverlapPct, 95) / 100.0));
+
+            var pivotX = (outerRing.Min(p => p.X) + outerRing.Max(p => p.X)) / 2.0;
+            var pivotY = (outerRing.Min(p => p.Y) + outerRing.Max(p => p.Y)) / 2.0;
+            var local = outerRing.Select(p => Rotate(p.X, p.Y, pivotX, pivotY, -flightDirectionDeg)).ToList();
+            var widthM = local.Max(p => p.X) - local.Min(p => p.X);
+            var heightM = local.Max(p => p.Y) - local.Min(p => p.Y);
+
+            if (widthM < lineSpacingM || heightM < waypointSpacingM)
+            {
+                return $"Survey area is only about {widthM:F0}m x {heightM:F0}m in the current flight " +
+                    $"direction, but these settings need {lineSpacingM:F0}m between lines and " +
+                    $"{waypointSpacingM:F0}m between waypoints. Try a lower GSD, lower altitude, less " +
+                    "side/front overlap, or a smaller camera image size - or check you selected the right " +
+                    "polygon (a survey layer with multiple parcels should have just one selected).";
+            }
+            return $"The area ({widthM:F0}m x {heightM:F0}m) should fit lines spaced {lineSpacingM:F0}m " +
+                "apart, but none of the sampled points landed inside it - this usually means the polygon is " +
+                "very thin, self-intersecting, or an odd/concave shape. Try a different Flight direction " +
+                "angle, or check the selected feature's geometry.";
+        }
     }
 }
