@@ -83,9 +83,10 @@ Analyze/Settings tabs.)
 ## Features & Usage
 
 Open the panel via the **Forestry Toolkit** ribbon tab -> **Forestry Toolkit**
-button (large, left). It has 7 tabs: **Prepare**, **Field Data**, **Analyze**,
-**Favorites**, **Settings**, **Help** (a full how-to-use guide, English/
-Indonesian), **About**. Every long-running feature shows its progress/result
+button (large, left). It has 8 tabs: **Prepare**, **Field Data**, **Analyze**,
+**Favorites**, **History** (a running log of what ran, when, and its
+result, across every feature), **Settings**, **Help** (a full how-to-use
+guide, English/Indonesian), **About**. Every long-running feature shows its progress/result
 in a status line under its own section. The raster/polygon/point/line layer
 dropdowns refresh themselves automatically on map switch or layer add/remove;
 **Refresh** (top of the panel) is still there for the rare case something
@@ -115,6 +116,20 @@ tab headers themselves out of view. A plain ArcGIS Pro Group Layer (drag your
 common layers into one named e.g. "⭐ Favorites") is a zero-code alternative/
 complement worth knowing about too, since it doesn't touch the *layers'*
 names either (only the group's).
+
+**History tab**: every feature already writes its own result to a
+`XxxStatus` property (`LandClearingStatus`, `RoadExtractionStatus`, ...) -
+this tab logs every change to any of them, newest first, into one running
+activity trail (`TreeCounterDockpaneViewModel.History.cs`, hooked onto the
+`PropertyChanged` event already firing for the ribbon status labels - no
+changes needed in any individual feature to show up here, a new feature's
+own `FooStatus` property is picked up automatically). Capped at 200
+entries; **Clear** empties it. Logs every status change, not just "final"
+ones - a multi-stage operation's "Scanning..." / "Vectorizing..." /
+"Done: ..." messages all get their own entries, which reads as a
+blow-by-blow trail more than noise in practice. No one-click re-run of a
+past entry yet (only the status text is captured, not the parameters that
+produced it) - add if the log alone isn't enough.
 
 ### Prepare tab
 

@@ -527,6 +527,26 @@
                     </StackPanel>
                 </TabItem>
 
+                <!-- A running log of what ran, when, and its result, across every feature -
+                     see TreeCounterDockpaneViewModel.History.cs for how this is populated
+                     generically off every feature's own "XxxStatus" property. -->
+                <TabItem Header="History">
+                    <StackPanel Style="{StaticResource TabContent}">
+                        <DockPanel LastChildFill="False" Margin="0,0,0,8">
+                            <TextBlock Text="Recent activity, newest first" DockPanel.Dock="Left" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <Button Content="Clear" Command="{Binding ClearHistoryCommand}" DockPanel.Dock="Right" Padding="6,0" FontSize="10"/>
+                        </DockPanel>
+
+                        <ItemsControl ItemsSource="{Binding RunHistory}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Display}" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </TabItem>
+
                 <TabItem Header="Settings">
                     <StackPanel Style="{StaticResource TabContent}">
                         <Expander Header="Advanced Detection Parameters" Margin="0,0,0,8">

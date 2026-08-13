@@ -62,6 +62,7 @@ namespace TreeCounterAddin
             // on ArcGIS's own Button.OnUpdate() ribbon-refresh timing alone left the labels
             // stuck on their placeholder text even after the panel was opened and used.
             PropertyChanged += (_, __) => RibbonStateChanged?.Invoke();
+            PropertyChanged += (_, e) => RecordHistory(e.PropertyName);
 
             // DockPaneManager only makes Find(DockPaneId) resolve to "this" AFTER the
             // constructor returns - firing synchronously here means every subscriber's

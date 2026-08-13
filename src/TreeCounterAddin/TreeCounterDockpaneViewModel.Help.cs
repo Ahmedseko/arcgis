@@ -39,8 +39,8 @@ namespace TreeCounterAddin
         public string HelpEnglishText { get; } = """
             FORESTRY TOOLKIT — HOW TO USE
 
-            This panel is organized into four working tabs (Prepare, Field Data, Analyze,
-            Settings) plus this Help tab and an About tab. Every tool follows the same
+            This panel is organized into working tabs (Prepare, Field Data, Analyze,
+            Favorites, History, Settings) plus this Help tab and an About tab. Every tool follows the same
             pattern: pick the layer(s) it needs from a dropdown, set any parameters, click
             its action button, and watch the status line underneath for progress or errors.
             Most long-running tools show a progress bar and a Cancel button - it's always
@@ -212,6 +212,19 @@ namespace TreeCounterAddin
             nothing written into the project itself).
 
 
+            ═══ HISTORY TAB ═══
+
+            A running log of what ran, when, and its result, across every feature in this
+            panel - newest entry at the top. Every feature already writes its own progress
+            and result into its own status line, so this tab collects all of them into one
+            place instead of you having to remember which tab a given result showed up in.
+            A multi-stage operation's intermediate messages ("Scanning...",
+            "Vectorizing...") get their own entries too, not just the final "Done: ..." one
+            - reads as a step-by-step trail. Capped at 200 entries; click Clear to empty it.
+            This is a read-only log, not a saved-parameters replay - it doesn't (yet) let
+            you re-run a past entry with one click.
+
+
             ═══ SETTINGS TAB ═══
 
             Advanced Detection Parameters
@@ -249,8 +262,8 @@ namespace TreeCounterAddin
         public string HelpIndonesianText { get; } = """
             FORESTRY TOOLKIT — CARA PAKAI
 
-            Panel ini terbagi jadi empat tab kerja (Prepare, Field Data, Analyze, Settings)
-            ditambah tab Help ini dan tab About. Semua alat di sini polanya sama: pilih
+            Panel ini terbagi jadi beberapa tab kerja (Prepare, Field Data, Analyze,
+            Favorites, History, Settings) ditambah tab Help ini dan tab About. Semua alat di sini polanya sama: pilih
             layer yang dibutuhkan dari dropdown, atur parameternya kalau ada, klik tombol
             aksinya, lalu lihat baris status di bawahnya untuk progress atau pesan error.
             Kebanyakan proses yang lama menampilkan progress bar dan tombol Cancel - aman
@@ -426,6 +439,20 @@ namespace TreeCounterAddin
             cetak, jadi favoritkan sesuatu akan diam-diam mengubah apa yang tercetak di
             peta. Favorites diingat per project (file kecil di komputer ini, tidak ditulis
             ke dalam project itu sendiri).
+
+
+            ═══ TAB HISTORY ═══
+
+            Catatan berjalan tentang apa yang sudah dijalankan, kapan, dan hasilnya, dari
+            semua fitur di panel ini - entri terbaru di paling atas. Setiap fitur memang
+            sudah menulis progress dan hasilnya sendiri-sendiri ke baris statusnya
+            masing-masing, jadi tab ini mengumpulkan semuanya jadi satu tempat, tidak perlu
+            ingat-ingat hasil tertentu muncul di tab mana. Pesan tahap-tengah dari proses
+            multi-tahap ("Scanning...", "Vectorizing...") juga dapat entrinya sendiri, bukan
+            cuma "Done: ..." di akhir - jadi terbaca seperti jejak langkah demi langkah.
+            Dibatasi 200 entri; klik Clear untuk mengosongkan. Ini catatan baca-saja, bukan
+            replay parameter tersimpan - belum bisa menjalankan ulang entri lama dengan satu
+            klik.
 
 
             ═══ TAB SETTINGS ═══
