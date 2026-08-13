@@ -36,8 +36,8 @@
         </Style>
 
         <!-- Every feature section is an Expander with this style so each tab stays
-             collapsible/compact - only Tree Detection defaults open (the original/primary
-             feature), everything else defaults collapsed. BasedOn the implicit Expander
+             collapsible/compact - every section defaults collapsed so a tab with several
+             features opens tidy instead of showing every form at once. BasedOn the implicit Expander
              style ArcGIS Pro registers app-wide - without it, a keyed style with no BasedOn
              falls back to WPF's raw stock chrome (a circular chevron) instead of Pro's own
              flat-arrow look, which is what made these look inconsistent with the Settings
@@ -148,7 +148,7 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Fishnet Generator" IsExpanded="True" Style="{StaticResource SectionExpander}">
+                        <Expander Header="Fishnet Generator" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
                                 <TextBlock Text="Planning polygon layer" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PolygonLayers}" SelectedItem="{Binding SelectedPolygonLayer}" Margin="0,0,0,8"/>
@@ -194,7 +194,7 @@
 
                 <TabItem Header="Field Data">
                     <StackPanel Style="{StaticResource TabContent}">
-                        <Expander Header="Import Timber Cruising Excel" IsExpanded="True" Style="{StaticResource SectionExpander}">
+                        <Expander Header="Import Timber Cruising Excel" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
                                 <TextBlock Text="Reads the &quot;TREE DATA&quot; sheet (species, diameter, height, volume, GPS X/Y) into a point layer."
                                            Style="{StaticResource HintLine}"/>
@@ -291,7 +291,7 @@
 
                 <TabItem Header="Analyze">
                     <StackPanel Style="{StaticResource TabContent}">
-                        <Expander Header="Tree Detection" IsExpanded="True" Style="{StaticResource SectionExpander}">
+                        <Expander Header="Tree Detection" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
                                 <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedRasterLayer}" Margin="0,0,0,8"/>
