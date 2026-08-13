@@ -99,16 +99,29 @@ namespace TreeCounterAddin
             var minY = toLocal.SelectMany(r => r).Min(p => p.Y);
             var maxY = toLocal.SelectMany(r => r).Max(p => p.Y);
 
+            // Candidate line X-positions, stepped by lineSpacingM - but a survey area
+            // narrower than one line's worth of spacing (a small/oddly-shaped RT plan, a
+            // sliver polygon) would otherwise make this loop run zero times and silently
+            // produce an empty mission (real result, 2026-08-14: a small "Pengajuan RT
+            // XLVI" polygon did exactly this). Falling back to a single line through the
+            // area's own center keeps a small site covered instead of failing outright.
+            var xs = new List<double>();
+            for (var x = minX + lineSpacingM / 2.0; x <= maxX; x += lineSpacingM)
+                xs.Add(x);
+            if (xs.Count == 0)
+                xs.Add((minX + maxX) / 2.0);
+
             var orderedWaypoints = new List<(double X, double Y)>();
             var lineParity = 0;
-            for (var x = minX + lineSpacingM / 2.0; x <= maxX; x += lineSpacingM)
+            foreach (var x in xs)
             {
-                var linePoints = new List<(double X, double Y)>();
+                var ys = new List<double>();
                 for (var y = minY; y <= maxY; y += waypointSpacingM)
-                {
-                    if (PointInPolygon(x, y, toLocal))
-                        linePoints.Add((x, y));
-                }
+                    ys.Add(y);
+                if (ys.Count == 0)
+                    ys.Add((minY + maxY) / 2.0);
+
+                var linePoints = ys.Where(y => PointInPolygon(x, y, toLocal)).Select(y => (x, y)).ToList();
                 if (linePoints.Count == 0) continue;
 
                 // Boustrophedon: alternate direction line-to-line so consecutive lines connect

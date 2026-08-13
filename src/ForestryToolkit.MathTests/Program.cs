@@ -79,6 +79,20 @@ Check("GenerateCoveragePlan: sequence restarts at 0 for every mission part",
 Check("GenerateCoveragePlan: roughly 10 lines x 11 waypoints for a 100x100m square at 10m spacing",
     plan.Waypoints.Count is >= 90 and <= 121);
 
+// A real result (2026-08-14): a small survey polygon (narrower than one line's worth of
+// spacing) produced zero waypoints - the line-position loop ran zero times and there was
+// no fallback. This is that exact scenario reproduced: a 20x20m polygon with the same
+// settings shown in that report (5cm/px GSD, 4000px image width, 70% side overlap ->
+// 60m line spacing, wider than the whole polygon).
+var smallArea = new List<(double X, double Y)> { (0, 0), (20, 0), (20, 20), (0, 20) };
+var smallPlan = FlightMissionMath.GenerateCoveragePlan(
+    smallArea, new List<IReadOnlyList<(double X, double Y)>>(),
+    altitudeM: 100, gsdCmPerPx: 5, imageWidthPx: 4000, imageHeightPx: 3000,
+    frontOverlapPct: 80, sideOverlapPct: 70, flightDirectionDeg: 0,
+    speedMs: 8, maxFlightMinutesPerBattery: 20);
+Check("GenerateCoveragePlan: a survey area smaller than the line spacing still gets waypoints",
+    smallPlan.Waypoints.Count > 0);
+
 // A short battery budget on the same site must split the single-battery plan into more parts.
 var splitPlan = FlightMissionMath.GenerateCoveragePlan(
     surveyArea, new List<IReadOnlyList<(double X, double Y)>>(),
