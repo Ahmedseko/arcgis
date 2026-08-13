@@ -55,6 +55,24 @@ namespace TreeCounterAddin
 
             ═══ PREPARE TAB ═══
 
+            Flight Mission Planner
+            Plans the drone survey itself, before you fly it - every other feature in this
+            add-in analyzes an orthophoto after the fact; this is the one exception. Pick a
+            survey area polygon, set altitude, GSD (ground sample distance), your camera's
+            image width/height in pixels, front/side overlap percentages, flight line
+            direction, cruise speed, and a maximum flight time per battery, then click
+            Generate Mission. Produces a "lawnmower" coverage flight plan - a waypoint point
+            layer and a flight-path line layer, colored by mission part - automatically
+            split into battery-sized parts so a large site doesn't overrun one battery.
+            Click Export Mission (CSV) to save a file most drone/ground-control apps
+            (Litchi, QGroundControl, DJI Pilot 2, etc.) can import or convert - check your
+            specific app if it needs a different format. Two things this doesn't do yet: it
+            won't auto-orient the flight lines to the site's shape (try a couple of
+            direction angles by hand if the default doesn't fit an elongated site well),
+            and altitude/GSD are independent settings you enter yourself rather than one
+            being computed from the other via your camera's focal length - keep them
+            consistent with your drone's actual capture settings.
+
             Fishnet Generator
             Splits a planning/concession polygon into a grid of equal-sized cells, for
             laying out cruising plots. Pick your planning polygon layer, set the cell width
@@ -247,6 +265,25 @@ namespace TreeCounterAddin
 
 
             ═══ TAB PREPARE ═══
+
+            Flight Mission Planner
+            Merencanakan survei drone-nya sendiri, sebelum terbang - semua fitur lain di
+            add-in ini menganalisis orthophoto setelah jadi; ini satu-satunya pengecualian.
+            Pilih layer poligon area survei, atur altitude, GSD (ground sample distance),
+            lebar/tinggi gambar kamera dalam piksel, persentase overlap depan/samping, arah
+            garis terbang, kecepatan jelajah, dan waktu terbang maksimum per baterai, lalu
+            klik Generate Mission. Menghasilkan rencana terbang cakupan gaya "lawnmower" -
+            layer titik waypoint dan layer garis jalur terbang, diwarnai per bagian misi -
+            otomatis terbagi jadi beberapa bagian sesuai kapasitas baterai supaya area besar
+            tidak melebihi satu baterai. Klik Export Mission (CSV) untuk menyimpan file yang
+            bisa diimpor atau dikonversi kebanyakan aplikasi drone/ground-control (Litchi,
+            QGroundControl, DJI Pilot 2, dll) - cek aplikasi spesifik Anda kalau butuh
+            format lain. Dua hal yang belum bisa dilakukan: belum bisa auto-orientasi garis
+            terbang mengikuti bentuk lokasi (coba beberapa sudut arah secara manual kalau
+            default-nya kurang pas untuk lokasi yang memanjang), dan altitude/GSD itu
+            pengaturan independen yang Anda isi sendiri, bukan salah satunya dihitung
+            otomatis dari yang lain lewat focal length kamera - pastikan konsisten dengan
+            pengaturan capture drone Anda yang sebenarnya.
 
             Fishnet Generator
             Membagi poligon rencana/konsesi menjadi grid sel berukuran sama, untuk menata

@@ -118,6 +118,28 @@ names either (only the group's).
 
 ### Prepare tab
 
+- **Flight Mission Planner** - plans the drone survey *before* you fly it (every
+  other feature in this add-in analyzes an orthophoto after the fact - this is
+  the one exception). Pick a survey area polygon and set altitude, GSD,
+  camera image size, front/side overlap, flight line direction, speed, and a
+  per-battery flight-time budget, click **Generate Mission**. Produces a
+  boustrophedon ("lawnmower") coverage flight plan - a point layer of
+  waypoints and a line layer of the flight path, colored by mission part -
+  split into battery-sized parts automatically. Click **Export Mission
+  (CSV)...** to save a `mission_part, sequence, latitude, longitude,
+  altitude_m` CSV most drone/GCS apps (Litchi, QGroundControl, DJI Pilot 2,
+  etc.) can import or convert; check your specific app's own expected format
+  if it needs something else. The coverage-geometry math
+  (`FlightMissionMath.cs`) is pure C# with no ArcGIS reference, unit-tested
+  standalone in `src/ForestryToolkit.MathTests` (run with `dotnet run` from
+  that folder, no ArcGIS Pro install needed) - same pattern as
+  `SliverMath.cs`/`BiomassMath.cs`. No auto-orientation yet (flight direction
+  is manual - try a couple of angles and compare the reported total distance
+  if the default doesn't suit an elongated site) and altitude/GSD are
+  independent inputs (this doesn't derive one from the other via camera
+  focal length - keep them consistent with your drone's actual capture
+  settings yourself). *Cancel: no (a single in-memory geometry pass, no GP
+  tool chain to interrupt).*
 - **Fishnet Generator** - pick a planning polygon layer, set cell width/height
   (map units), click **Create Fishnet**. Generates a grid over the polygon's
   extent and clips it to the polygon's actual shape, with a `Cell_ID` field

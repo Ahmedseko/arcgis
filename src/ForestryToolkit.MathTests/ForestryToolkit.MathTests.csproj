@@ -17,6 +17,7 @@
   <ItemGroup>
     <Compile Include="..\TreeCounterAddin\SliverMath.cs" Link="SliverMath.cs" />
     <Compile Include="..\TreeCounterAddin\BiomassMath.cs" Link="BiomassMath.cs" />
+    <Compile Include="..\TreeCounterAddin\FlightMissionMath.cs" Link="FlightMissionMath.cs" />
   </ItemGroup>
 
 </Project>
