@@ -300,33 +300,48 @@ namespace TreeCounterAddin
                     return;
                 }
 
-                // Drone flight-control apps expect latitude/longitude, not this project's own
-                // projected/meters CRS - reproject each waypoint to WGS84 on the way out
-                // rather than writing out coordinates the receiving app can't use directly.
+                // Litchi Mission Hub is the actual CSV-importing app in this space - it accepts a
+                // minimal "latitude,longitude,altitude(m)" header with those 3 columns first and
+                // in that order (https://www.litchiutilities.com/docs/litchiCsv.php). DJI's own
+                // apps (DJI Fly/DJI Pilot 2) don't take CSV at all - they need a KMZ/WPML mission,
+                // so this format is Litchi-specific, not a generic "any drone app" format. A
+                // Litchi CSV is one file per flight route, so a battery split into multiple
+                // mission parts becomes one file per part rather than a mission_part column
+                // Litchi wouldn't understand.
                 var wgs84 = SpatialReferences.WGS84;
-                var rows = await QueuedTask.Run(() =>
+                var filesByPart = await QueuedTask.Run(() =>
                 {
-                    var lines = new List<string> { "mission_part,sequence,latitude,longitude,altitude_m" };
-                    foreach (var wp in _lastFlightPlan.Waypoints)
+                    var result = new Dictionary<int, List<string>>();
+                    foreach (var wp in _lastFlightPlan.Waypoints.OrderBy(w => w.MissionPart).ThenBy(w => w.Sequence))
                     {
+                        if (!result.TryGetValue(wp.MissionPart, out var lines))
+                            result[wp.MissionPart] = lines = new List<string> { "latitude,longitude,altitude(m)" };
                         var point = MapPointBuilderEx.CreateMapPoint(wp.X, wp.Y, _lastFlightPlanSpatialReference);
                         var projected = GeometryEngine.Instance.Project(point, wgs84) as MapPoint;
                         lines.Add(string.Join(",", new[]
                         {
-                            wp.MissionPart.ToString(CultureInfo.InvariantCulture),
-                            wp.Sequence.ToString(CultureInfo.InvariantCulture),
                             projected?.Y.ToString("F7", CultureInfo.InvariantCulture),
                             projected?.X.ToString("F7", CultureInfo.InvariantCulture),
                             wp.Altitude.ToString("F1", CultureInfo.InvariantCulture),
                         }));
                     }
-                    return lines;
+                    return result;
                 });
 
-                await File.WriteAllLinesAsync(dialog.FileName, rows, Encoding.UTF8);
-                FlightMissionStatus = $"Done: exported {_lastFlightPlan.Waypoints.Count} waypoints to {dialog.FileName}. " +
-                    "Most drone/GCS apps (Litchi, QGroundControl, DJI Pilot 2, etc.) can import or convert a lat/lon CSV - " +
-                    "check your specific app's own import format if it needs something else.";
+                var baseName = Path.Combine(Path.GetDirectoryName(dialog.FileName) ?? "",
+                    Path.GetFileNameWithoutExtension(dialog.FileName));
+                var writtenFiles = new List<string>();
+                foreach (var (part, lines) in filesByPart.OrderBy(kv => kv.Key))
+                {
+                    var path = filesByPart.Count > 1 ? $"{baseName}_part{part}.csv" : dialog.FileName;
+                    await File.WriteAllLinesAsync(path, lines, Encoding.UTF8);
+                    writtenFiles.Add(path);
+                }
+
+                FlightMissionStatus = $"Done: exported {_lastFlightPlan.Waypoints.Count} waypoints to " +
+                    $"{writtenFiles.Count} file(s) ({string.Join(", ", writtenFiles.Select(Path.GetFileName))}) " +
+                    "in Litchi Mission Hub's CSV format (latitude, longitude, altitude(m)). DJI's own DJI " +
+                    "Fly/Pilot 2 apps don't import CSV directly - they need a KMZ mission file.";
             }
             catch (Exception ex)
             {
