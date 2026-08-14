@@ -150,18 +150,16 @@ namespace TreeCounterAddin
             // concave shape, but it resolved every case seen so far in testing against the real
             // polygon that exposed this - any leftover risk is still caught by the
             // OffPolygonLegCount check below instead of staying silent about it.
-            var orderedWaypoints = new List<(double X, double Y)>();
-            if (allRuns.Count > 0)
+            List<(double X, double Y)> BuildTour(int startIndex, bool reverseStart)
             {
-                allRuns.Sort((a, b) => a[0].X.CompareTo(b[0].X));
                 var remaining = new List<List<(double X, double Y)>>(allRuns);
-                var first = remaining[0];
-                remaining.RemoveAt(0);
-                orderedWaypoints.AddRange(first);
-
+                var current = new List<(double X, double Y)>(remaining[startIndex]);
+                remaining.RemoveAt(startIndex);
+                if (reverseStart) current.Reverse();
+                var tourRuns = new List<List<(double X, double Y)>> { current };
                 while (remaining.Count > 0)
                 {
-                    var (cx, cy) = orderedWaypoints[^1];
+                    var (cx, cy) = tourRuns[^1][^1];
                     var bestIndex = -1;
                     var bestReversed = false;
                     var bestDistSq = double.MaxValue;
@@ -178,11 +176,62 @@ namespace TreeCounterAddin
                             bestReversed = d1 < d0;
                         }
                     }
-                    var chosen = remaining[bestIndex];
+                    var chosen = new List<(double X, double Y)>(remaining[bestIndex]);
                     remaining.RemoveAt(bestIndex);
                     if (bestReversed) chosen.Reverse();
-                    orderedWaypoints.AddRange(chosen);
+                    tourRuns.Add(chosen);
                 }
+                var flat = new List<(double X, double Y)>();
+                foreach (var run in tourRuns) flat.AddRange(run);
+                return flat;
+            }
+
+            (int OffPolygonCount, double MaxTurnM) ScoreTour(List<(double X, double Y)> tour)
+            {
+                var offCount = 0;
+                var maxTurn = 0.0;
+                for (var i = 0; i < tour.Count - 1; i++)
+                {
+                    var (x1, y1) = tour[i];
+                    var (x2, y2) = tour[i + 1];
+                    if (!PointInPolygon((x1 + x2) / 2.0, (y1 + y2) / 2.0, toLocal))
+                        offCount++;
+                    var d = Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
+                    if (d > maxTurn) maxTurn = d;
+                }
+                return (offCount, maxTurn);
+            }
+
+            var orderedWaypoints = new List<(double X, double Y)>();
+            if (allRuns.Count > 0)
+            {
+                // A single nearest-neighbor construction can land on a tour with one unlucky
+                // long detour purely from where it happened to start - trying every possible
+                // starting run (and direction) and keeping whichever tour has the fewest
+                // off-polygon legs, then the shortest worst-case transit, is cheap (O(runs^3),
+                // trivial for anything short of hundreds of lines) and consistently finds a
+                // materially better tour (verified against the real river-bend-notch polygon:
+                // eliminated the one remaining off-polygon leg at a specific angle, with no
+                // regression at any other angle tested). Capped so a very detailed mission
+                // (100+ lines) can't turn a button click into a multi-second wait.
+                var startCandidates = allRuns.Count <= 60 ? allRuns.Count : 1;
+                List<(double X, double Y)> bestTour = null;
+                var bestScore = (OffPolygonCount: int.MaxValue, MaxTurnM: double.MaxValue);
+                for (var startIndex = 0; startIndex < startCandidates; startIndex++)
+                {
+                    foreach (var reverseStart in new[] { false, true })
+                    {
+                        var tour = BuildTour(startIndex, reverseStart);
+                        var score = ScoreTour(tour);
+                        if (score.OffPolygonCount < bestScore.OffPolygonCount ||
+                            (score.OffPolygonCount == bestScore.OffPolygonCount && score.MaxTurnM < bestScore.MaxTurnM))
+                        {
+                            bestScore = score;
+                            bestTour = tour;
+                        }
+                    }
+                }
+                orderedWaypoints = bestTour;
             }
 
             // Splitting each line into contiguous runs (above) fixes the common case, but a

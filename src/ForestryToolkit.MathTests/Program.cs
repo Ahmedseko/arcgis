@@ -151,8 +151,8 @@ var concavePlan = FlightMissionMath.GenerateCoveragePlan(
     altitudeM: 100, gsdCmPerPx: 5, imageWidthPx: 4000, imageHeightPx: 3000,
     frontOverlapPct: 80, sideOverlapPct: 70, flightDirectionDeg: 92,
     speedMs: 8, maxFlightMinutesPerBattery: 20);
-Check("GenerateCoveragePlan: nearest-neighbor ordering keeps almost every leg inside a concave polygon at 92deg",
-    concavePlan.OffPolygonLegCount <= 1);
+Check("GenerateCoveragePlan: multi-start nearest-neighbor keeps every leg inside a concave polygon at 92deg",
+    concavePlan.OffPolygonLegCount == 0);
 
 // A short battery budget on the same site must split the single-battery plan into more parts.
 var splitPlan = FlightMissionMath.GenerateCoveragePlan(
