@@ -118,9 +118,14 @@ var realSite = new List<(double X, double Y)>
     (253177.10, 9641941.60), (251655.78, 9642028.10), (251370.85, 9642460.58),
     (251416.64, 9642661.56), (253146.57, 9642521.64),
 };
-var suggestedDeg = FlightMissionMath.SuggestDirection(realSite);
+var suggestion = FlightMissionMath.SuggestDirection(
+    realSite, gsdCmPerPx: 5, imageWidthPx: 4000, sideOverlapPct: 70, currentDirectionDeg: 0);
 Check("SuggestDirection: aligns an east-west elongated site near 90deg, not near 0",
-    suggestedDeg is >= 80 and <= 100);
+    suggestion.BestDegrees is >= 80 and <= 100);
+Check("SuggestDirection: reports genuinely fewer lines at the best angle than at the previous 0deg",
+    suggestion.LinesAtBest < suggestion.LinesAtCurrent);
+Check("SuggestDirection: tested all 180 candidate angles",
+    suggestion.AnglesTested == 180);
 
 // --- GenerateCoveragePlan on a concave polygon ---
 // This site has one reflex (concave) vertex (a river-bend notch), which makes several lines

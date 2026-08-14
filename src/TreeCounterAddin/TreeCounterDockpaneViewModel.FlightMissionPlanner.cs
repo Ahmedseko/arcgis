@@ -375,10 +375,17 @@ namespace TreeCounterAddin
                     FlightMissionStatus = error;
                     return;
                 }
-                var suggested = await QueuedTask.Run(() => FlightMissionMath.SuggestDirection(outer));
-                FlightDirectionDeg = Math.Round(suggested, 1);
-                FlightMissionStatus = $"Suggested flight direction: {FlightDirectionDeg}° (aligned with " +
-                    "the survey area's long axis, for fewer/longer coverage lines). Click Generate Mission to use it.";
+                var previousDeg = FlightDirectionDeg;
+                var suggestion = await QueuedTask.Run(() => FlightMissionMath.SuggestDirection(
+                    outer, FlightGsdCmPerPx, FlightImageWidthPx, FlightSideOverlapPct, FlightDirectionDeg));
+                FlightDirectionDeg = suggestion.BestDegrees;
+                var comparison = suggestion.LinesAtCurrent > suggestion.LinesAtBest
+                    ? $"{suggestion.LinesAtBest} lines needed here vs {suggestion.LinesAtCurrent} at the " +
+                        $"previous {previousDeg}° - fewer, longer coverage lines."
+                    : $"{suggestion.LinesAtBest} lines needed - the previous {previousDeg}° was already this good.";
+                FlightMissionStatus = $"Tested all {suggestion.AnglesTested} possible compass angles against " +
+                    $"the survey polygon's actual shape. Best fit: {FlightDirectionDeg}° ({comparison}) " +
+                    "Click Generate Mission to use it.";
             }
             catch (Exception ex)
             {

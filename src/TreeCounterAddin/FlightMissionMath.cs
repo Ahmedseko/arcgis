@@ -74,11 +74,8 @@ namespace TreeCounterAddin
             double speedMs, double maxFlightMinutesPerBattery)
         {
             var gsdM = gsdCmPerPx / 100.0;
-            var footprintWidthM = gsdM * imageWidthPx;
             var footprintHeightM = gsdM * imageHeightPx;
-            // A driving parameter at/above 100% overlap gives zero/negative spacing (infinite
-            // lines/waypoints) - floor it well short of that instead of dividing by zero later.
-            var lineSpacingM = Math.Max(0.5, footprintWidthM * (1 - Math.Min(sideOverlapPct, 95) / 100.0));
+            var lineSpacingM = LineSpacingM(gsdCmPerPx, imageWidthPx, sideOverlapPct);
             var waypointSpacingM = Math.Max(0.5, footprintHeightM * (1 - Math.Min(frontOverlapPct, 95) / 100.0));
 
             var allRings = new List<IReadOnlyList<(double X, double Y)>> { outerRing };
@@ -247,26 +244,52 @@ namespace TreeCounterAddin
                 offPolygonLegCount);
         }
 
+        // Shared by GenerateCoveragePlan, DescribeCoverageFailure and SuggestDirection - how far
+        // apart adjacent flight lines need to be for the requested GSD/camera/side-overlap combo.
+        // A driving parameter at/above 100% overlap gives zero/negative spacing (infinite lines)
+        // - floor it well short of that instead of dividing by zero later.
+        private static double LineSpacingM(double gsdCmPerPx, int imageWidthPx, double sideOverlapPct) =>
+            Math.Max(0.5, (gsdCmPerPx / 100.0) * imageWidthPx * (1 - Math.Min(sideOverlapPct, 95) / 100.0));
+
+        public record DirectionSuggestion(double BestDegrees, int AnglesTested, int LinesAtBest, int LinesAtCurrent);
+
         /// <summary>
         /// Suggests a flight direction (compass bearing, 0-179) that minimizes the number of
         /// coverage lines needed by aligning them with the survey polygon's own long axis,
         /// instead of the default 0 deg cutting across an elongated/irregular site and chopping
-        /// coverage into many short, unevenly-lengthed zigzag columns. Searches every whole
-        /// degree (cheap - O(180 * ring size)) and keeps the one with the smallest spacing-axis
-        /// bounding width in the rotated frame (fewer/longer lines for a fixed line spacing).
+        /// coverage into many short, unevenly-lengthed zigzag columns. Genuinely tests every
+        /// whole-degree angle against the polygon's real vertices (cheap - O(180 * ring size),
+        /// so it finishes in milliseconds even though it's a full search, not a shortcut) and
+        /// keeps the one needing the fewest lines at the requested line spacing. Returns the
+        /// actual line counts at the best angle and at whatever direction was already set, so
+        /// the caller can show concrete before/after numbers instead of just a bare angle.
         /// </summary>
-        public static double SuggestDirection(IReadOnlyList<(double X, double Y)> outerRing)
+        public static DirectionSuggestion SuggestDirection(
+            IReadOnlyList<(double X, double Y)> outerRing,
+            double gsdCmPerPx, int imageWidthPx, double sideOverlapPct, double currentDirectionDeg)
         {
+            var lineSpacingM = LineSpacingM(gsdCmPerPx, imageWidthPx, sideOverlapPct);
             var pivotX = (outerRing.Min(p => p.X) + outerRing.Max(p => p.X)) / 2.0;
             var pivotY = (outerRing.Min(p => p.Y) + outerRing.Max(p => p.Y)) / 2.0;
-            double bestDeg = 0, bestWidth = double.MaxValue;
-            for (var deg = 0; deg < 180; deg++)
+
+            double WidthAtDeg(double deg)
             {
-                var local = outerRing.Select(p => Rotate(p.X, p.Y, pivotX, pivotY, -deg)).ToList();
-                var width = local.Max(p => p.X) - local.Min(p => p.X);
+                var local = outerRing.Select(p => Rotate(p.X, p.Y, pivotX, pivotY, -deg));
+                return local.Max(p => p.X) - local.Min(p => p.X);
+            }
+            int LinesFor(double widthM) => Math.Max(1, (int)Math.Ceiling(widthM / lineSpacingM));
+
+            double bestDeg = 0, bestWidth = double.MaxValue;
+            const int anglesTested = 180;
+            for (var deg = 0; deg < anglesTested; deg++)
+            {
+                var width = WidthAtDeg(deg);
                 if (width < bestWidth) { bestWidth = width; bestDeg = deg; }
             }
-            return bestDeg;
+
+            var currentNormalized = ((currentDirectionDeg % 180) + 180) % 180;
+            var linesAtCurrent = LinesFor(WidthAtDeg(currentNormalized));
+            return new DirectionSuggestion(bestDeg, anglesTested, LinesFor(bestWidth), linesAtCurrent);
         }
 
         /// <summary>
@@ -281,7 +304,7 @@ namespace TreeCounterAddin
             double frontOverlapPct, double sideOverlapPct, double flightDirectionDeg)
         {
             var gsdM = gsdCmPerPx / 100.0;
-            var lineSpacingM = Math.Max(0.5, gsdM * imageWidthPx * (1 - Math.Min(sideOverlapPct, 95) / 100.0));
+            var lineSpacingM = LineSpacingM(gsdCmPerPx, imageWidthPx, sideOverlapPct);
             var waypointSpacingM = Math.Max(0.5, gsdM * imageHeightPx * (1 - Math.Min(frontOverlapPct, 95) / 100.0));
 
             var pivotX = (outerRing.Min(p => p.X) + outerRing.Max(p => p.X)) / 2.0;
