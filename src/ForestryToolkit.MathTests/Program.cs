@@ -106,6 +106,22 @@ Check("DescribeCoverageFailure: names the computed line spacing for a too-small 
 Check("DescribeCoverageFailure: names the area's own size",
     failureMessage.Contains("20m"));
 
+// --- FlightMissionMath.SuggestDirection ---
+// Real report (2026-08-14, "drone flight path"): an elongated, irregular 2844x804m site
+// running roughly east-west was flown with the default 0deg (north-south lines), chopping
+// coverage into ~47 short, unevenly-lengthed zigzag columns with steep diagonal jumps between
+// them. This is that exact polygon - the suggestion should land close to the ~92deg that
+// actually fits its long axis, not near the default 0.
+var realSite = new List<(double X, double Y)>
+{
+    (254174.35, 9642745.51), (254215.05, 9642254.52), (253947.93, 9642137.49),
+    (253177.10, 9641941.60), (251655.78, 9642028.10), (251370.85, 9642460.58),
+    (251416.64, 9642661.56), (253146.57, 9642521.64),
+};
+var suggestedDeg = FlightMissionMath.SuggestDirection(realSite);
+Check("SuggestDirection: aligns an east-west elongated site near 90deg, not near 0",
+    suggestedDeg is >= 80 and <= 100);
+
 // A short battery budget on the same site must split the single-battery plan into more parts.
 var splitPlan = FlightMissionMath.GenerateCoveragePlan(
     surveyArea, new List<IReadOnlyList<(double X, double Y)>>(),

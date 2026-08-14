@@ -183,84 +183,24 @@ namespace TreeCounterAddin
                     return;
                 }
 
-                var map = MapView.Active.Map;
-                var layer = await QueuedTask.Run(() =>
-                    map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
-                        .FirstOrDefault(l => l.Name == SelectedFlightPlanningLayer));
-                if (layer == null)
+                var (outer, holes, sr, readError) = await ReadSurveyPolygonAsync();
+                if (readError != null)
                 {
-                    FlightMissionStatus = "Layer not found - click Refresh and pick again.";
+                    FlightMissionStatus = readError;
                     return;
                 }
 
-                var (plan, sr, error) = await QueuedTask.Run(() =>
+                var (plan, error) = await QueuedTask.Run(() =>
                 {
-                    using var featureClass = layer.GetFeatureClass();
-
-                    // A layer with several separate features (parcels/blocks) has no single
-                    // "the" survey boundary - silently flying whichever record the cursor
-                    // happens to return first is how a real report (2026-08-14, "Pengajuan RT
-                    // XLVI", 13 features from a 1,547 m2 sliver up to a 696,172 m2 block) ended
-                    // up planning a mission over a tiny, oddly-shaped parcel nobody meant to fly,
-                    // which then failed with a dead-end "no waypoints" message. Require an
-                    // explicit single-feature selection whenever the layer isn't unambiguous.
-                    var selection = layer.GetSelection();
-                    Polygon poly;
-                    if (selection != null && selection.GetCount() > 0)
-                    {
-                        if (selection.GetCount() > 1)
-                            return (null, null, $"{selection.GetCount()} features are selected in " +
-                                $"\"{layer.Name}\" - Flight Mission Planner flies one survey area at a time. " +
-                                "Select just the one block/parcel you want to fly and try again.");
-                        using var selCursor = selection.Search();
-                        selCursor.MoveNext();
-                        using var selFeature = (Feature)selCursor.Current;
-                        poly = selFeature.GetShape() as Polygon;
-                    }
-                    else
-                    {
-                        var total = featureClass.GetCount();
-                        if (total == 0)
-                            return (null, null, "No features in the selected layer.");
-                        if (total > 1)
-                            return (null, null, $"\"{layer.Name}\" has {total} features and none is " +
-                                "selected - Flight Mission Planner flies one survey area at a time. Select " +
-                                "the specific parcel/block on the map, then Generate Mission again.");
-                        using var cursor = featureClass.Search(null, false);
-                        cursor.MoveNext();
-                        using var onlyFeature = (Feature)cursor.Current;
-                        poly = onlyFeature.GetShape() as Polygon;
-                    }
-
-                    if (poly == null)
-                        return (null, null, "Selected feature isn't a polygon.");
-                    if (poly.SpatialReference == null || poly.SpatialReference.IsGeographic)
-                        return (null, null, "The layer must be in a projected coordinate system (meters) - " +
-                            "flight-line spacing is computed in real-world distance, not degrees.");
-
-                    // Every ring, biggest first - the biggest is the actual survey boundary,
-                    // any smaller ones are holes (islands) to route around. Same "outer ring +
-                    // hole rings" shape SliverDetection.cs already reads off Polygon.Parts.
-                    var rings = poly.Parts
-                        .Select(part => part.Select(seg => (seg.StartPoint.X, seg.StartPoint.Y)).ToList())
-                        .Where(part => part.Count >= 3)
-                        .OrderByDescending(part => Math.Abs(SignedArea(part)))
-                        .ToList();
-                    if (rings.Count == 0)
-                        return (null, null, "Selected polygon has no usable rings.");
-
-                    var outer = rings[0];
-                    var holes = rings.Skip(1).Select(r => (IReadOnlyList<(double X, double Y)>)r).ToList();
-
                     var generated = FlightMissionMath.GenerateCoveragePlan(
                         outer, holes, FlightAltitudeM, FlightGsdCmPerPx, FlightImageWidthPx, FlightImageHeightPx,
                         FlightFrontOverlapPct, FlightSideOverlapPct, FlightDirectionDeg, FlightSpeedMs,
                         MaxFlightMinutesPerBattery);
                     if (generated.Waypoints.Count == 0)
-                        return (generated, poly.SpatialReference, "No waypoints generated. " +
+                        return (generated, "No waypoints generated. " +
                             FlightMissionMath.DescribeCoverageFailure(outer, FlightGsdCmPerPx, FlightImageWidthPx,
                                 FlightImageHeightPx, FlightFrontOverlapPct, FlightSideOverlapPct, FlightDirectionDeg));
-                    return (generated, poly.SpatialReference, (string)null);
+                    return (generated, (string)null);
                 });
 
                 if (error != null)
@@ -269,6 +209,7 @@ namespace TreeCounterAddin
                     return;
                 }
 
+                var map = MapView.Active.Map;
                 var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 var waypointsFc = Path.Combine(project.DefaultGeodatabasePath, $"FlightWaypoints_{stamp}");
                 var pathFc = Path.Combine(project.DefaultGeodatabasePath, $"FlightPath_{stamp}");
@@ -310,7 +251,7 @@ namespace TreeCounterAddin
 
                 FlightMissionStatus = $"Done: {plan.Waypoints.Count} waypoints, {plan.MissionPartCount} mission " +
                     $"part(s) (~{plan.TotalFlightMinutes:F1} min flight time, {plan.TotalDistanceM / 1000.0:F2} km " +
-                    "total). Click Export Mission (CSV) to save for your drone app.";
+                    "total). Pick an export format below and click Export Mission to save for your drone app.";
             }
             catch (Exception ex)
             {
@@ -319,6 +260,117 @@ namespace TreeCounterAddin
             finally
             {
                 IsGeneratingMission = false;
+            }
+        }
+
+        // Shared by GenerateMissionAsync and SuggestDirectionAsync - resolves
+        // SelectedFlightPlanningLayer down to one unambiguous polygon's outer ring + holes.
+        private async Task<(IReadOnlyList<(double X, double Y)> Outer,
+            List<IReadOnlyList<(double X, double Y)>> Holes, SpatialReference Sr, string Error)> ReadSurveyPolygonAsync()
+        {
+            if (MapView.Active == null)
+                return (null, null, null, "No active map view. Open a map first.");
+
+            var map = MapView.Active.Map;
+            var layer = await QueuedTask.Run(() =>
+                map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
+                    .FirstOrDefault(l => l.Name == SelectedFlightPlanningLayer));
+            if (layer == null)
+                return (null, null, null, "Layer not found - click Refresh and pick again.");
+
+            return await QueuedTask.Run(() =>
+            {
+                using var featureClass = layer.GetFeatureClass();
+
+                // A layer with several separate features (parcels/blocks) has no single "the"
+                // survey boundary - silently flying whichever record the cursor happens to
+                // return first is how a real report (2026-08-14, "Pengajuan RT XLVI", 13
+                // features from a 1,547 m2 sliver up to a 696,172 m2 block) ended up planning a
+                // mission over a tiny, oddly-shaped parcel nobody meant to fly. Require an
+                // explicit single-feature selection whenever the layer isn't unambiguous.
+                var selection = layer.GetSelection();
+                Polygon poly;
+                if (selection != null && selection.GetCount() > 0)
+                {
+                    if (selection.GetCount() > 1)
+                        return (null, null, null, $"{selection.GetCount()} features are selected in " +
+                            $"\"{layer.Name}\" - Flight Mission Planner works on one survey area at a time. " +
+                            "Select just the one block/parcel you want and try again.");
+                    using var selCursor = selection.Search();
+                    selCursor.MoveNext();
+                    using var selFeature = (Feature)selCursor.Current;
+                    poly = selFeature.GetShape() as Polygon;
+                }
+                else
+                {
+                    var total = featureClass.GetCount();
+                    if (total == 0)
+                        return (null, null, null, "No features in the selected layer.");
+                    if (total > 1)
+                        return (null, null, null, $"\"{layer.Name}\" has {total} features and none is " +
+                            "selected - Flight Mission Planner works on one survey area at a time. Select " +
+                            "the specific parcel/block on the map and try again.");
+                    using var cursor = featureClass.Search(null, false);
+                    cursor.MoveNext();
+                    using var onlyFeature = (Feature)cursor.Current;
+                    poly = onlyFeature.GetShape() as Polygon;
+                }
+
+                if (poly == null)
+                    return (null, null, null, "Selected feature isn't a polygon.");
+                if (poly.SpatialReference == null || poly.SpatialReference.IsGeographic)
+                    return (null, null, null, "The layer must be in a projected coordinate system (meters) - " +
+                        "line spacing/direction are computed in real-world distance, not degrees.");
+
+                // Every ring, biggest first - the biggest is the actual survey boundary, any
+                // smaller ones are holes (islands) to route around. Same "outer ring + hole
+                // rings" shape SliverDetection.cs already reads off Polygon.Parts.
+                var rings = poly.Parts
+                    .Select(part => part.Select(seg => (seg.StartPoint.X, seg.StartPoint.Y)).ToList())
+                    .Where(part => part.Count >= 3)
+                    .OrderByDescending(part => Math.Abs(SignedArea(part)))
+                    .ToList();
+                if (rings.Count == 0)
+                    return (null, null, null, "Selected polygon has no usable rings.");
+
+                var outer = (IReadOnlyList<(double X, double Y)>)rings[0];
+                var holes = rings.Skip(1).Select(r => (IReadOnlyList<(double X, double Y)>)r).ToList();
+                return (outer, holes, poly.SpatialReference, (string)null);
+            });
+        }
+
+        public ICommand SuggestDirectionCommand => new RelayCommand(async () => await SuggestDirectionAsync(),
+            () => SelectedFlightPlanningLayer != null);
+
+        // Picks the compass bearing that minimizes the number of coverage lines needed, i.e.
+        // aligns flight lines with the survey polygon's own long axis instead of cutting across
+        // it. A direction perpendicular to an elongated/irregular site's shape (the default 0
+        // deg is exactly this for an east-west site) chops coverage into many short zigzag
+        // columns of very different lengths - real report (2026-08-14, "drone flight path", a
+        // 2844x804m site): 0 deg needed ~47 lines of 6-21 points each (highly uneven, lots of
+        // steep diagonal jumps between columns); ~92 deg needed only ~13 lines of far more
+        // uniform length. Doesn't touch FlightDirectionDeg unless the user clicks this - a
+        // manually-chosen direction (e.g. to match a client's preferred flight orientation)
+        // should never get silently overwritten by Generate Mission itself.
+        private async Task SuggestDirectionAsync()
+        {
+            FlightMissionStatus = "Analyzing polygon shape...";
+            try
+            {
+                var (outer, _, _, error) = await ReadSurveyPolygonAsync();
+                if (error != null)
+                {
+                    FlightMissionStatus = error;
+                    return;
+                }
+                var suggested = await QueuedTask.Run(() => FlightMissionMath.SuggestDirection(outer));
+                FlightDirectionDeg = Math.Round(suggested, 1);
+                FlightMissionStatus = $"Suggested flight direction: {FlightDirectionDeg}° (aligned with " +
+                    "the survey area's long axis, for fewer/longer coverage lines). Click Generate Mission to use it.";
+            }
+            catch (Exception ex)
+            {
+                FlightMissionStatus = $"Unexpected error: {ex.Message}";
             }
         }
 

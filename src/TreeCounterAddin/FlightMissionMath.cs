@@ -175,6 +175,28 @@ namespace TreeCounterAddin
         }
 
         /// <summary>
+        /// Suggests a flight direction (compass bearing, 0-179) that minimizes the number of
+        /// coverage lines needed by aligning them with the survey polygon's own long axis,
+        /// instead of the default 0 deg cutting across an elongated/irregular site and chopping
+        /// coverage into many short, unevenly-lengthed zigzag columns. Searches every whole
+        /// degree (cheap - O(180 * ring size)) and keeps the one with the smallest spacing-axis
+        /// bounding width in the rotated frame (fewer/longer lines for a fixed line spacing).
+        /// </summary>
+        public static double SuggestDirection(IReadOnlyList<(double X, double Y)> outerRing)
+        {
+            var pivotX = (outerRing.Min(p => p.X) + outerRing.Max(p => p.X)) / 2.0;
+            var pivotY = (outerRing.Min(p => p.Y) + outerRing.Max(p => p.Y)) / 2.0;
+            double bestDeg = 0, bestWidth = double.MaxValue;
+            for (var deg = 0; deg < 180; deg++)
+            {
+                var local = outerRing.Select(p => Rotate(p.X, p.Y, pivotX, pivotY, -deg)).ToList();
+                var width = local.Max(p => p.X) - local.Min(p => p.X);
+                if (width < bestWidth) { bestWidth = width; bestDeg = deg; }
+            }
+            return bestDeg;
+        }
+
+        /// <summary>
         /// Builds a specific, actionable message for why GenerateCoveragePlan returned zero
         /// waypoints, instead of leaving the caller with just "it didn't work" - compares the
         /// survey area's own size (in the flight-direction-aligned frame) against the computed

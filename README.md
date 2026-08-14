@@ -156,12 +156,16 @@ produced it) - add if the log alone isn't enough.
   (`WpmlBuilder.cs`) are pure C# with no ArcGIS reference, unit-tested
   standalone in `src/ForestryToolkit.MathTests` (run with `dotnet run` from
   that folder, no ArcGIS Pro install needed) - same pattern as
-  `SliverMath.cs`/`BiomassMath.cs`. No auto-orientation yet (flight direction
-  is manual - try a couple of angles and compare the reported total distance
-  if the default doesn't suit an elongated site) and altitude/GSD are
-  independent inputs (this doesn't derive one from the other via camera
-  focal length - keep them consistent with your drone's actual capture
-  settings yourself). Every parameter field has a hover tooltip explaining
+  `SliverMath.cs`/`BiomassMath.cs`. Click **Suggest** next to Flight direction
+  to auto-fill the bearing that fits the survey polygon's own long axis
+  (`FlightMissionMath.SuggestDirection`, a 0-179deg search for the fewest
+  coverage lines) - the default 0deg cuts an elongated/irregular site into
+  many short, unevenly-lengthed zigzag columns with steep diagonal jumps
+  between them (real case: a 2844x804m site needed ~47 lines at 0deg vs. ~13
+  at the suggested ~92deg). Altitude/GSD are still independent inputs (this
+  doesn't derive one from the other via camera focal length - keep them
+  consistent with your drone's actual capture settings yourself). Every
+  parameter field has a hover tooltip explaining
   it (`BilingualTooltipConverter.cs`) - reuses the same English/Indonesian
   flag the Help tab exposes rather than adding a second language switch
   just for tooltips, so the language picked there also drives these.

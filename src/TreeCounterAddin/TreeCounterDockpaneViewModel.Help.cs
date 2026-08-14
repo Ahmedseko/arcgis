@@ -70,12 +70,13 @@ namespace TreeCounterAddin
             lineup (Mavic 3 Enterprise, Matrice 30/300/350) and needs the matching drone
             model picked from the dropdown that appears. Click Export Mission to save the
             file, then import it in that app - always review altitude/home point/RC-lost
-            settings inside the app before actually flying. Two things this doesn't do yet: it
-            won't auto-orient the flight lines to the site's shape (try a couple of
-            direction angles by hand if the default doesn't fit an elongated site well),
-            and altitude/GSD are independent settings you enter yourself rather than one
-            being computed from the other via your camera's focal length - keep them
-            consistent with your drone's actual capture settings.
+            settings inside the app before actually flying. If the default direction (0, N-S
+            lines) chops an elongated/irregular site into many short zigzag columns instead
+            of a few long clean passes, click Suggest next to Flight direction - it analyzes
+            the polygon's own shape and fills in the bearing that needs the fewest lines.
+            One thing this doesn't do yet: altitude/GSD are independent settings you enter
+            yourself rather than one being computed from the other via your camera's focal
+            length - keep them consistent with your drone's actual capture settings.
 
             Fishnet Generator
             Splits a planning/concession polygon into a grid of equal-sized cells, for
@@ -299,12 +300,14 @@ namespace TreeCounterAddin
             30/300/350) dan butuh model drone yang dipilih dari dropdown yang muncul. Klik
             Export Mission untuk simpan file, lalu import di aplikasi tersebut - selalu cek
             ulang altitude/home point/RC-lost di dalam aplikasinya sebelum benar-benar
-            terbang. Dua hal yang belum bisa dilakukan: belum bisa auto-orientasi garis
-            terbang mengikuti bentuk lokasi (coba beberapa sudut arah secara manual kalau
-            default-nya kurang pas untuk lokasi yang memanjang), dan altitude/GSD itu
-            pengaturan independen yang Anda isi sendiri, bukan salah satunya dihitung
-            otomatis dari yang lain lewat focal length kamera - pastikan konsisten dengan
-            pengaturan capture drone Anda yang sebenarnya.
+            terbang. Kalau arah default (0, garis utara-selatan) memotong lokasi yang
+            memanjang/tidak beraturan jadi banyak kolom zig-zag pendek alih-alih beberapa
+            garis panjang yang bersih, klik Suggest di sebelah Flight direction - ini
+            menganalisis bentuk poligon dan mengisi otomatis sudut yang butuh garis paling
+            sedikit. Satu hal yang belum bisa dilakukan: altitude/GSD itu pengaturan
+            independen yang Anda isi sendiri, bukan salah satunya dihitung otomatis dari
+            yang lain lewat focal length kamera - pastikan konsisten dengan pengaturan
+            capture drone Anda yang sebenarnya.
 
             Fishnet Generator
             Membagi poligon rencana/konsesi menjadi grid sel berukuran sama, untuk menata
