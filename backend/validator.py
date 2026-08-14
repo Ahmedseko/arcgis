@@ -175,6 +175,10 @@ def test_api_key(provider, api_key, model):
         msg = str(e)
         if msg.startswith('QUOTA_EXCEEDED'):
             return False, 'Rate-limited/quota exceeded (key may still be valid).'
+        if 'credit balance' in msg.lower():
+            return False, ('This key has no API credit balance. Anthropic/OpenAI/Gemini API keys are '
+                'billed separately (prepaid credits) from a chat subscription - add credits in that '
+                "provider's console/billing page, then Test Key again.")
         return False, msg
 
 
