@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -101,6 +102,44 @@ namespace TreeCounterAddin
             set => SetProperty(ref _maxFlightMinutesPerBattery, value);
         }
 
+        // Two export formats because no single format actually covers "every DJI drone":
+        // Litchi CSV works with the consumer lineup (Mavic 3 Classic, Air/Mini series - the
+        // apps for those, DJI Fly, have no waypoint-mission import at all), DJI Pilot 2 KMZ
+        // only works with the enterprise lineup (Mavic 3 Enterprise, Matrice 30/300/350) and
+        // needs a drone-specific code baked into the file (see WpmlBuilder.cs).
+        public List<string> ExportFormats { get; } = new()
+        {
+            "Litchi CSV (works with most DJI drones)",
+            "DJI Pilot 2 KMZ (Mavic 3 Enterprise / Matrice series only)"
+        };
+
+        private string _selectedExportFormat = "Litchi CSV (works with most DJI drones)";
+        public string SelectedExportFormat
+        {
+            get => _selectedExportFormat;
+            set
+            {
+                if (!SetProperty(ref _selectedExportFormat, value)) return;
+                IsKmzFormatSelected = value != null && value.StartsWith("DJI Pilot 2");
+            }
+        }
+
+        private bool _isKmzFormatSelected;
+        public bool IsKmzFormatSelected
+        {
+            get => _isKmzFormatSelected;
+            set => SetProperty(ref _isKmzFormatSelected, value);
+        }
+
+        public List<string> DroneModelNames { get; } = WpmlBuilder.DronePresets.Select(p => p.Label).ToList();
+
+        private string _selectedDroneModel = WpmlBuilder.DronePresets[0].Label;
+        public string SelectedDroneModel
+        {
+            get => _selectedDroneModel;
+            set => SetProperty(ref _selectedDroneModel, value);
+        }
+
         private bool _isGeneratingMission;
         public bool IsGeneratingMission
         {
@@ -115,15 +154,15 @@ namespace TreeCounterAddin
             set => SetProperty(ref _flightMissionStatus, value);
         }
 
-        // Kept around so "Export Mission (CSV)" reuses the exact plan already on the map
-        // instead of silently regenerating (and possibly drifting from what's displayed if
-        // a parameter box was edited in between).
+        // Kept around so "Export Mission" reuses the exact plan already on the map instead of
+        // silently regenerating (and possibly drifting from what's displayed if a parameter
+        // box was edited in between).
         private FlightMissionMath.Plan _lastFlightPlan;
         private SpatialReference _lastFlightPlanSpatialReference;
 
         public ICommand GenerateMissionCommand => new RelayCommand(async () => await GenerateMissionAsync(),
             () => !IsGeneratingMission && SelectedFlightPlanningLayer != null);
-        public ICommand ExportMissionCsvCommand => new RelayCommand(async () => await ExportMissionCsvAsync(),
+        public ICommand ExportMissionCommand => new RelayCommand(async () => await ExportMissionAsync(),
             () => _lastFlightPlan != null);
 
         private async Task GenerateMissionAsync()
@@ -283,16 +322,21 @@ namespace TreeCounterAddin
             }
         }
 
-        private async Task ExportMissionCsvAsync()
+        // Two export formats because no single format actually covers "every DJI drone" (see
+        // the comment on ExportFormats above): Litchi CSV for the consumer lineup, DJI Pilot 2
+        // KMZ for the enterprise lineup. Both model "one file = one flight route", so a battery
+        // split into multiple mission parts becomes one file per part either way.
+        private async Task ExportMissionAsync()
         {
             if (_lastFlightPlan == null) return;
             try
             {
+                var isKmz = IsKmzFormatSelected;
                 var dialog = new SaveFileDialog
                 {
-                    FileName = "FlightMission.csv",
-                    Filter = "CSV files (*.csv)|*.csv",
-                    DefaultExt = ".csv"
+                    FileName = isKmz ? "FlightMission.kmz" : "FlightMission.csv",
+                    Filter = isKmz ? "DJI WPML mission (*.kmz)|*.kmz" : "CSV files (*.csv)|*.csv",
+                    DefaultExt = isKmz ? ".kmz" : ".csv"
                 };
                 if (dialog.ShowDialog() != true)
                 {
@@ -300,30 +344,17 @@ namespace TreeCounterAddin
                     return;
                 }
 
-                // Litchi Mission Hub is the actual CSV-importing app in this space - it accepts a
-                // minimal "latitude,longitude,altitude(m)" header with those 3 columns first and
-                // in that order (https://www.litchiutilities.com/docs/litchiCsv.php). DJI's own
-                // apps (DJI Fly/DJI Pilot 2) don't take CSV at all - they need a KMZ/WPML mission,
-                // so this format is Litchi-specific, not a generic "any drone app" format. A
-                // Litchi CSV is one file per flight route, so a battery split into multiple
-                // mission parts becomes one file per part rather than a mission_part column
-                // Litchi wouldn't understand.
                 var wgs84 = SpatialReferences.WGS84;
-                var filesByPart = await QueuedTask.Run(() =>
+                var byPart = await QueuedTask.Run(() =>
                 {
-                    var result = new Dictionary<int, List<string>>();
+                    var result = new Dictionary<int, List<(double Lat, double Lon, double AltitudeM)>>();
                     foreach (var wp in _lastFlightPlan.Waypoints.OrderBy(w => w.MissionPart).ThenBy(w => w.Sequence))
                     {
-                        if (!result.TryGetValue(wp.MissionPart, out var lines))
-                            result[wp.MissionPart] = lines = new List<string> { "latitude,longitude,altitude(m)" };
+                        if (!result.TryGetValue(wp.MissionPart, out var points))
+                            result[wp.MissionPart] = points = new List<(double, double, double)>();
                         var point = MapPointBuilderEx.CreateMapPoint(wp.X, wp.Y, _lastFlightPlanSpatialReference);
                         var projected = GeometryEngine.Instance.Project(point, wgs84) as MapPoint;
-                        lines.Add(string.Join(",", new[]
-                        {
-                            projected?.Y.ToString("F7", CultureInfo.InvariantCulture),
-                            projected?.X.ToString("F7", CultureInfo.InvariantCulture),
-                            wp.Altitude.ToString("F1", CultureInfo.InvariantCulture),
-                        }));
+                        points.Add((projected?.Y ?? 0, projected?.X ?? 0, wp.Altitude));
                     }
                     return result;
                 });
@@ -331,17 +362,49 @@ namespace TreeCounterAddin
                 var baseName = Path.Combine(Path.GetDirectoryName(dialog.FileName) ?? "",
                     Path.GetFileNameWithoutExtension(dialog.FileName));
                 var writtenFiles = new List<string>();
-                foreach (var (part, lines) in filesByPart.OrderBy(kv => kv.Key))
+                var ext = isKmz ? "kmz" : "csv";
+
+                if (isKmz)
                 {
-                    var path = filesByPart.Count > 1 ? $"{baseName}_part{part}.csv" : dialog.FileName;
-                    await File.WriteAllLinesAsync(path, lines, Encoding.UTF8);
-                    writtenFiles.Add(path);
+                    var drone = WpmlBuilder.DronePresets.FirstOrDefault(p => p.Label == SelectedDroneModel)
+                        ?? WpmlBuilder.DronePresets[0];
+                    foreach (var (part, points) in byPart.OrderBy(kv => kv.Key))
+                    {
+                        var path = byPart.Count > 1 ? $"{baseName}_part{part}.{ext}" : dialog.FileName;
+                        if (File.Exists(path)) File.Delete(path);
+                        var kml = WpmlBuilder.BuildTemplateKml(points, FlightSpeedMs, drone);
+                        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+                        using (var entryStream = archive.CreateEntry("wpmz/template.kml").Open())
+                        using (var writer = new StreamWriter(entryStream, Encoding.UTF8))
+                            await writer.WriteAsync(kml);
+                        writtenFiles.Add(path);
+                    }
+                }
+                else
+                {
+                    foreach (var (part, points) in byPart.OrderBy(kv => kv.Key))
+                    {
+                        var path = byPart.Count > 1 ? $"{baseName}_part{part}.{ext}" : dialog.FileName;
+                        var lines = new List<string> { "latitude,longitude,altitude(m)" };
+                        lines.AddRange(points.Select(p => string.Join(",", new[]
+                        {
+                            p.Lat.ToString("F7", CultureInfo.InvariantCulture),
+                            p.Lon.ToString("F7", CultureInfo.InvariantCulture),
+                            p.AltitudeM.ToString("F1", CultureInfo.InvariantCulture),
+                        })));
+                        await File.WriteAllLinesAsync(path, lines, Encoding.UTF8);
+                        writtenFiles.Add(path);
+                    }
                 }
 
+                var formatNote = isKmz
+                    ? $"DJI Pilot 2 WPML mission for {SelectedDroneModel} - review altitude/home point/RC-lost " +
+                        "behavior inside DJI Pilot 2 before flying, same as any imported mission."
+                    : "Litchi Mission Hub CSV format (latitude, longitude, altitude(m)) - import inside the " +
+                        "Litchi app, not DJI Fly/Pilot 2 (they don't take CSV directly).";
                 FlightMissionStatus = $"Done: exported {_lastFlightPlan.Waypoints.Count} waypoints to " +
-                    $"{writtenFiles.Count} file(s) ({string.Join(", ", writtenFiles.Select(Path.GetFileName))}) " +
-                    "in Litchi Mission Hub's CSV format (latitude, longitude, altitude(m)). DJI's own DJI " +
-                    "Fly/Pilot 2 apps don't import CSV directly - they need a KMZ mission file.";
+                    $"{writtenFiles.Count} file(s) ({string.Join(", ", writtenFiles.Select(Path.GetFileName))}). " +
+                    formatNote;
             }
             catch (Exception ex)
             {

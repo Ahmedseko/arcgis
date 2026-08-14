@@ -140,12 +140,20 @@ produced it) - add if the log alone isn't enough.
   per-battery flight-time budget, click **Generate Mission**. Produces a
   boustrophedon ("lawnmower") coverage flight plan - a point layer of
   waypoints and a line layer of the flight path, colored by mission part -
-  split into battery-sized parts automatically. Click **Export Mission
-  (CSV)...** to save a `mission_part, sequence, latitude, longitude,
-  altitude_m` CSV most drone/GCS apps (Litchi, QGroundControl, DJI Pilot 2,
-  etc.) can import or convert; check your specific app's own expected format
-  if it needs something else. The coverage-geometry math
-  (`FlightMissionMath.cs`) is pure C# with no ArcGIS reference, unit-tested
+  split into battery-sized parts automatically. Pick an **export format**,
+  then click **Export Mission...**: **Litchi CSV** (`latitude, longitude,
+  altitude(m)`) works with most DJI drones, including the consumer lineup
+  (Mavic 3 Classic, Air, Mini) - DJI Fly itself has no waypoint-mission
+  import at all, so Litchi is the actual working path there; **DJI Pilot 2
+  KMZ** (WPML `template.kml` zipped under `wpmz/`) only works with the
+  enterprise lineup (Mavic 3 Enterprise, Matrice 30/300/350) and needs a
+  drone model picked from a dropdown, since the file must carry a
+  drone-specific code DJI Pilot 2 checks on import. Either way a battery
+  split into multiple mission parts becomes one file per part. Zero-waypoint
+  failures explain themselves with real numbers (survey area size vs.
+  computed line/waypoint spacing) instead of a dead-end message. The
+  coverage-geometry math (`FlightMissionMath.cs`) and the KMZ builder
+  (`WpmlBuilder.cs`) are pure C# with no ArcGIS reference, unit-tested
   standalone in `src/ForestryToolkit.MathTests` (run with `dotnet run` from
   that folder, no ArcGIS Pro install needed) - same pattern as
   `SliverMath.cs`/`BiomassMath.cs`. No auto-orientation yet (flight direction

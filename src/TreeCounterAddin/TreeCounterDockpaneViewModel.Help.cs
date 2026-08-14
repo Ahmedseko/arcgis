@@ -64,9 +64,13 @@ namespace TreeCounterAddin
             Generate Mission. Produces a "lawnmower" coverage flight plan - a waypoint point
             layer and a flight-path line layer, colored by mission part - automatically
             split into battery-sized parts so a large site doesn't overrun one battery.
-            Click Export Mission (CSV) to save a file most drone/ground-control apps
-            (Litchi, QGroundControl, DJI Pilot 2, etc.) can import or convert - check your
-            specific app if it needs a different format. Two things this doesn't do yet: it
+            Pick an export format: Litchi CSV works with most DJI drones (including the
+            consumer lineup - Mavic 3 Classic, Air, Mini - since DJI Fly itself has no
+            waypoint-mission import at all); DJI Pilot 2 KMZ only works with the enterprise
+            lineup (Mavic 3 Enterprise, Matrice 30/300/350) and needs the matching drone
+            model picked from the dropdown that appears. Click Export Mission to save the
+            file, then import it in that app - always review altitude/home point/RC-lost
+            settings inside the app before actually flying. Two things this doesn't do yet: it
             won't auto-orient the flight lines to the site's shape (try a couple of
             direction angles by hand if the default doesn't fit an elongated site well),
             and altitude/GSD are independent settings you enter yourself rather than one
@@ -288,10 +292,14 @@ namespace TreeCounterAddin
             klik Generate Mission. Menghasilkan rencana terbang cakupan gaya "lawnmower" -
             layer titik waypoint dan layer garis jalur terbang, diwarnai per bagian misi -
             otomatis terbagi jadi beberapa bagian sesuai kapasitas baterai supaya area besar
-            tidak melebihi satu baterai. Klik Export Mission (CSV) untuk menyimpan file yang
-            bisa diimpor atau dikonversi kebanyakan aplikasi drone/ground-control (Litchi,
-            QGroundControl, DJI Pilot 2, dll) - cek aplikasi spesifik Anda kalau butuh
-            format lain. Dua hal yang belum bisa dilakukan: belum bisa auto-orientasi garis
+            tidak melebihi satu baterai. Pilih format export: Litchi CSV cocok untuk
+            kebanyakan drone DJI (termasuk lini konsumer - Mavic 3 Classic, Air, Mini -
+            karena DJI Fly sendiri tidak punya fitur import waypoint mission sama sekali);
+            DJI Pilot 2 KMZ hanya cocok untuk lini enterprise (Mavic 3 Enterprise, Matrice
+            30/300/350) dan butuh model drone yang dipilih dari dropdown yang muncul. Klik
+            Export Mission untuk simpan file, lalu import di aplikasi tersebut - selalu cek
+            ulang altitude/home point/RC-lost di dalam aplikasinya sebelum benar-benar
+            terbang. Dua hal yang belum bisa dilakukan: belum bisa auto-orientasi garis
             terbang mengikuti bentuk lokasi (coba beberapa sudut arah secara manual kalau
             default-nya kurang pas untuk lokasi yang memanjang), dan altitude/GSD itu
             pengaturan independen yang Anda isi sendiri, bukan salah satunya dihitung

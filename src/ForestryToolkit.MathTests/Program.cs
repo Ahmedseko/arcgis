@@ -1,4 +1,5 @@
 using System;
+using System.Xml.Linq;
 using TreeCounterAddin;
 
 // Plain self-check, no test framework - run with `dotnet run` from this folder. Exits
@@ -113,6 +114,23 @@ var splitPlan = FlightMissionMath.GenerateCoveragePlan(
     speedMs: 8, maxFlightMinutesPerBattery: 1);
 Check("GenerateCoveragePlan: a tight battery budget splits into multiple mission parts",
     splitPlan.MissionPartCount > plan.MissionPartCount);
+
+// --- WpmlBuilder.BuildTemplateKml ---
+// Real-world risk here isn't a math bug, it's a malformed/incomplete XML that DJI Pilot 2
+// silently rejects - the one check worth having is "does this actually parse, and does it
+// carry the drone-specific codes that make or break the import".
+var m30 = WpmlBuilder.DronePresets.First(p => p.Label == "Matrice 30");
+var wpmlXml = WpmlBuilder.BuildTemplateKml(
+    new List<(double Lat, double Lon, double AltitudeM)> { (-6.2, 106.8, 100), (-6.201, 106.801, 100) },
+    speedMs: 8, m30);
+XDocument parsedKml = null;
+try { parsedKml = XDocument.Parse(wpmlXml); } catch { /* leave null, Check below fails */ }
+Check("BuildTemplateKml: produces well-formed XML", parsedKml != null);
+Check("BuildTemplateKml: one Placemark per waypoint",
+    parsedKml?.Descendants().Count(e => e.Name.LocalName == "Placemark") == 2);
+Check("BuildTemplateKml: carries the selected drone's enum codes",
+    wpmlXml.Contains("<wpml:droneEnumValue>67</wpml:droneEnumValue>") &&
+    wpmlXml.Contains("<wpml:payloadEnumValue>52</wpml:payloadEnumValue>"));
 
 Console.WriteLine();
 Console.WriteLine(failures == 0 ? "All checks passed." : $"{failures} check(s) FAILED.");

@@ -18,6 +18,7 @@
     <Compile Include="..\TreeCounterAddin\SliverMath.cs" Link="SliverMath.cs" />
     <Compile Include="..\TreeCounterAddin\BiomassMath.cs" Link="BiomassMath.cs" />
     <Compile Include="..\TreeCounterAddin\FlightMissionMath.cs" Link="FlightMissionMath.cs" />
+    <Compile Include="..\TreeCounterAddin\WpmlBuilder.cs" Link="WpmlBuilder.cs" />
   </ItemGroup>
 
 </Project>
