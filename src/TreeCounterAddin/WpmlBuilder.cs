@@ -112,6 +112,28 @@ namespace TreeCounterAddin
                 sb.Append("<wpml:useGlobalSpeed>1</wpml:useGlobalSpeed>\n");
                 sb.Append("<wpml:useGlobalHeadingParam>1</wpml:useGlobalHeadingParam>\n");
                 sb.Append("<wpml:useGlobalTurnParam>1</wpml:useGlobalTurnParam>\n");
+                // One actionGroup per waypoint (actionGroupStartIndex == actionGroupEndIndex ==
+                // this waypoint's own index, per DJI's own reference example) that fires a
+                // takePhoto action on arrival - without this the drone just flies the path with
+                // the camera never triggering, which defeats the whole point of an orthophoto
+                // survey mission. actionGroupId reuses the loop index too, which already
+                // satisfies "unique, monotonically increasing from 0 across the file" since
+                // there's exactly one group per waypoint.
+                sb.Append("<wpml:actionGroup>\n");
+                sb.Append($"<wpml:actionGroupId>{i}</wpml:actionGroupId>\n");
+                sb.Append($"<wpml:actionGroupStartIndex>{i}</wpml:actionGroupStartIndex>\n");
+                sb.Append($"<wpml:actionGroupEndIndex>{i}</wpml:actionGroupEndIndex>\n");
+                sb.Append("<wpml:actionGroupMode>sequence</wpml:actionGroupMode>\n");
+                sb.Append("<wpml:actionTrigger><wpml:actionTriggerType>reachPoint</wpml:actionTriggerType></wpml:actionTrigger>\n");
+                sb.Append("<wpml:action>\n");
+                sb.Append("<wpml:actionId>0</wpml:actionId>\n");
+                sb.Append("<wpml:actionActuatorFunc>takePhoto</wpml:actionActuatorFunc>\n");
+                sb.Append("<wpml:actionActuatorFuncParam>\n");
+                sb.Append($"<wpml:fileSuffix>wp{i}</wpml:fileSuffix>\n");
+                sb.Append("<wpml:payloadPositionIndex>0</wpml:payloadPositionIndex>\n");
+                sb.Append("</wpml:actionActuatorFuncParam>\n");
+                sb.Append("</wpml:action>\n");
+                sb.Append("</wpml:actionGroup>\n");
                 sb.Append("</Placemark>\n");
             }
 

@@ -398,10 +398,15 @@ namespace TreeCounterAddin
                 }
 
                 var formatNote = isKmz
-                    ? $"DJI Pilot 2 WPML mission for {SelectedDroneModel} - review altitude/home point/RC-lost " +
-                        "behavior inside DJI Pilot 2 before flying, same as any imported mission."
+                    ? $"DJI Pilot 2 WPML mission for {SelectedDroneModel}, with a take-photo action set at " +
+                        "every waypoint. Review altitude/home point/RC-lost behavior inside DJI Pilot 2 " +
+                        "before flying, same as any imported mission."
                     : "Litchi Mission Hub CSV format (latitude, longitude, altitude(m)) - import inside the " +
-                        "Litchi app, not DJI Fly/Pilot 2 (they don't take CSV directly).";
+                        "Litchi app, not DJI Fly/Pilot 2 (they don't take CSV directly). This file only has " +
+                        "the flight path - turn on photo capture in Litchi's own mission settings (e.g. " +
+                        "\"Take photos\" per waypoint, or a distance/time interval) before flying, since this " +
+                        "toolkit can't verify Litchi's per-waypoint action CSV columns without testing them " +
+                        "in the app first.";
                 FlightMissionStatus = $"Done: exported {_lastFlightPlan.Waypoints.Count} waypoints to " +
                     $"{writtenFiles.Count} file(s) ({string.Join(", ", writtenFiles.Select(Path.GetFileName))}). " +
                     formatNote;

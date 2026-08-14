@@ -131,6 +131,9 @@ Check("BuildTemplateKml: one Placemark per waypoint",
 Check("BuildTemplateKml: carries the selected drone's enum codes",
     wpmlXml.Contains("<wpml:droneEnumValue>67</wpml:droneEnumValue>") &&
     wpmlXml.Contains("<wpml:payloadEnumValue>52</wpml:payloadEnumValue>"));
+Check("BuildTemplateKml: fires a takePhoto action group at every waypoint",
+    parsedKml?.Descendants().Count(e => e.Name.LocalName == "actionGroup") == 2 &&
+    parsedKml?.Descendants().Count(e => e.Name.LocalName == "actionActuatorFunc" && e.Value == "takePhoto") == 2);
 
 Console.WriteLine();
 Console.WriteLine(failures == 0 ? "All checks passed." : $"{failures} check(s) FAILED.");
