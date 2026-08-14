@@ -93,6 +93,7 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <!-- ToolTip on both the label and the box (same bilingual lookup, see
                                          BilingualTooltipConverter.cs) - hover either to see it, and it
@@ -124,30 +125,27 @@
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=SideOverlap}"/>
                                     <TextBlock Grid.Row="6" Grid.Column="0" Text="Flight direction (deg, 0 = N-S lines)" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Direction}"/>
-                                    <Grid Grid.Row="6" Grid.Column="1" Margin="0,2">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Text="{Binding FlightDirectionDeg}"
-                                                 ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Direction}"/>
-                                        <Button Grid.Column="1" Content="V" Command="{Binding SetDirectionVerticalCommand}"
-                                                Padding="6,0" Margin="4,0,0,0" ToolTip="Vertical - lines run north-south (0 deg)."/>
-                                        <Button Grid.Column="2" Content="H" Command="{Binding SetDirectionHorizontalCommand}"
-                                                Padding="6,0" Margin="4,0,0,0" ToolTip="Horizontal - lines run east-west (90 deg)."/>
-                                        <Button Grid.Column="3" Content="Suggest" Command="{Binding SuggestDirectionCommand}"
-                                                Padding="6,0" Margin="4,0,0,0"
+                                    <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding FlightDirectionDeg}" Margin="0,2"
+                                             ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Direction}"/>
+                                    <!-- Full-width row (not squeezed into the 90px value column above) so these
+                                         buttons stay readable even in a narrow docked panel. -->
+                                    <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal"
+                                                HorizontalAlignment="Right" Margin="0,0,0,2">
+                                        <Button Content="Vertical" Command="{Binding SetDirectionVerticalCommand}"
+                                                Padding="6,2" ToolTip="Vertical - lines run north-south (0 deg)."/>
+                                        <Button Content="Horizontal" Command="{Binding SetDirectionHorizontalCommand}"
+                                                Padding="6,2" Margin="4,0,0,0" ToolTip="Horizontal - lines run east-west (90 deg)."/>
+                                        <Button Content="Suggest" Command="{Binding SuggestDirectionCommand}"
+                                                Padding="6,2" Margin="4,0,0,0"
                                                 ToolTip="Analyzes the survey polygon's shape and fills in the direction that fits it best (fewer, longer coverage lines instead of many short zigzag columns) - usually a better fit than a plain Vertical/Horizontal guess."/>
-                                    </Grid>
-                                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Speed (m/s)" VerticalAlignment="Center"
+                                    </StackPanel>
+                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Speed (m/s)" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Speed}"/>
-                                    <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding FlightSpeedMs}" Margin="0,2"
+                                    <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding FlightSpeedMs}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Speed}"/>
-                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Max flight time / battery (min)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="9" Grid.Column="0" Text="Max flight time / battery (min)" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Battery}"/>
-                                    <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding MaxFlightMinutesPerBattery}" Margin="0,2"
+                                    <TextBox Grid.Row="9" Grid.Column="1" Text="{Binding MaxFlightMinutesPerBattery}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Battery}"/>
                                 </Grid>
 
