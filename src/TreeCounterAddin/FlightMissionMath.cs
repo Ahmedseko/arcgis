@@ -118,7 +118,7 @@ namespace TreeCounterAddin
             // Naively connecting the last point before that gap straight to the first point
             // after it draws a long chord straight through the excluded area - visibly outside
             // the site on the map.
-            var perLineRuns = new List<List<List<(double X, double Y)>>>();
+            var allRuns = new List<List<(double X, double Y)>>();
             foreach (var x in xs)
             {
                 var ys = new List<double>();
@@ -128,7 +128,6 @@ namespace TreeCounterAddin
                     ys.Add((minY + maxY) / 2.0);
 
                 List<(double X, double Y)> currentRun = null;
-                var runs = new List<List<(double X, double Y)>>();
                 foreach (var y in ys)
                 {
                     if (PointInPolygon(x, y, toLocal))
@@ -138,32 +137,54 @@ namespace TreeCounterAddin
                     }
                     else if (currentRun != null)
                     {
-                        runs.Add(currentRun);
+                        allRuns.Add(currentRun);
                         currentRun = null;
                     }
                 }
-                if (currentRun != null) runs.Add(currentRun);
-                perLineRuns.Add(runs);
+                if (currentRun != null) allRuns.Add(currentRun);
             }
 
-            // Fly every line's *first* run before touching any line's second run, etc., instead
-            // of finishing one line's runs (first run, then straight back to that same line's
-            // second run - a chord straight through the same gap just split apart) before moving
-            // on. Consecutive lines rarely both need a second run at the same place, so this pass
-            // structure naturally keeps each leg short and between points that are actually
-            // inside, instead of jumping the full length of a gap on one line.
+            // Greedily walk to whichever unvisited run's nearer endpoint is physically closest,
+            // rather than a rigid "line order, then line's-2nd-run order" traversal - a fixed
+            // rule like that can still connect two runs that are far apart just because the rule
+            // said to next (real reports, 2026-08-14: a short run left stranded and reached via
+            // a long out-of-sequence jump at one direction, a leg cutting straight outside the
+            // polygon at another). Nearest-neighbor isn't a guaranteed fix for every possible
+            // concave shape, but it resolved every case seen so far in testing against the real
+            // polygon that exposed this - any leftover risk is still caught by the
+            // OffPolygonLegCount check below instead of staying silent about it.
             var orderedWaypoints = new List<(double X, double Y)>();
-            var segmentParity = 0;
-            var maxRunsPerLine = perLineRuns.Count == 0 ? 0 : perLineRuns.Max(r => r.Count);
-            for (var passIndex = 0; passIndex < maxRunsPerLine; passIndex++)
+            if (allRuns.Count > 0)
             {
-                foreach (var runs in perLineRuns)
+                allRuns.Sort((a, b) => a[0].X.CompareTo(b[0].X));
+                var remaining = new List<List<(double X, double Y)>>(allRuns);
+                var first = remaining[0];
+                remaining.RemoveAt(0);
+                orderedWaypoints.AddRange(first);
+
+                while (remaining.Count > 0)
                 {
-                    if (passIndex >= runs.Count) continue;
-                    var run = runs[passIndex];
-                    if (segmentParity % 2 == 1) run.Reverse();
-                    orderedWaypoints.AddRange(run);
-                    segmentParity++;
+                    var (cx, cy) = orderedWaypoints[^1];
+                    var bestIndex = -1;
+                    var bestReversed = false;
+                    var bestDistSq = double.MaxValue;
+                    for (var i = 0; i < remaining.Count; i++)
+                    {
+                        var run = remaining[i];
+                        var d0 = Math.Pow(run[0].X - cx, 2) + Math.Pow(run[0].Y - cy, 2);
+                        var d1 = Math.Pow(run[^1].X - cx, 2) + Math.Pow(run[^1].Y - cy, 2);
+                        var d = Math.Min(d0, d1);
+                        if (d < bestDistSq)
+                        {
+                            bestDistSq = d;
+                            bestIndex = i;
+                            bestReversed = d1 < d0;
+                        }
+                    }
+                    var chosen = remaining[bestIndex];
+                    remaining.RemoveAt(bestIndex);
+                    if (bestReversed) chosen.Reverse();
+                    orderedWaypoints.AddRange(chosen);
                 }
             }
 

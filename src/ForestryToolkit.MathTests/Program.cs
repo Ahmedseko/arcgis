@@ -123,20 +123,30 @@ Check("SuggestDirection: aligns an east-west elongated site near 90deg, not near
     suggestedDeg is >= 80 and <= 100);
 
 // --- GenerateCoveragePlan on a concave polygon ---
-// This site has one reflex (concave) vertex - flying at ~92deg makes 3 of 13 lines cross out
-// of the polygon and back in (a river-bend notch). Before splitting each line into contiguous
-// in-polygon runs, the code silently connected the point before a gap straight to the point
-// after it, drawing a long chord straight through the excluded area - visibly outside the
-// site on the map (real report, 2026-08-14). This checks that regression doesn't come back:
-// before the fix this was 3-4 off-polygon legs, now it's at most 1 (a narrower residual case
-// where a multi-run line sits at the very edge of the sweep range - true general fix needs
-// real obstacle-aware path planning, out of scope here).
+// This site has one reflex (concave) vertex (a river-bend notch), which makes several lines
+// cross out of the polygon and back in depending on flight direction. Two real reports,
+// 2026-08-14: at 0deg one of the short leftover segments looked "disconnected" (reached via a
+// long out-of-sequence jump under the old rigid line/pass ordering); at 90deg a leg cut
+// straight outside the polygon through the notch. Greedy nearest-neighbor ordering (always
+// walk to whichever unvisited run's nearer end is physically closest) fixes both at these
+// exact angles - 92deg keeps a narrower residual (a true general fix needs real obstacle-aware
+// path planning, out of scope here), so that one's checked separately with a looser bound.
+foreach (var deg in new[] { 0.0, 90.0 })
+{
+    var checkPlan = FlightMissionMath.GenerateCoveragePlan(
+        realSite, new List<IReadOnlyList<(double X, double Y)>>(),
+        altitudeM: 100, gsdCmPerPx: 5, imageWidthPx: 4000, imageHeightPx: 3000,
+        frontOverlapPct: 80, sideOverlapPct: 70, flightDirectionDeg: deg,
+        speedMs: 8, maxFlightMinutesPerBattery: 20);
+    Check($"GenerateCoveragePlan: nearest-neighbor ordering keeps every leg inside a concave polygon at {deg}deg",
+        checkPlan.OffPolygonLegCount == 0);
+}
 var concavePlan = FlightMissionMath.GenerateCoveragePlan(
     realSite, new List<IReadOnlyList<(double X, double Y)>>(),
     altitudeM: 100, gsdCmPerPx: 5, imageWidthPx: 4000, imageHeightPx: 3000,
     frontOverlapPct: 80, sideOverlapPct: 70, flightDirectionDeg: 92,
     speedMs: 8, maxFlightMinutesPerBattery: 20);
-Check("GenerateCoveragePlan: splitting lines into runs keeps almost every leg inside a concave polygon",
+Check("GenerateCoveragePlan: nearest-neighbor ordering keeps almost every leg inside a concave polygon at 92deg",
     concavePlan.OffPolygonLegCount <= 1);
 
 // A short battery budget on the same site must split the single-battery plan into more parts.
