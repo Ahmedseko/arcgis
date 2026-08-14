@@ -14,7 +14,8 @@ namespace TreeCounterAddin
     {
         public record Waypoint(double X, double Y, double Altitude, int MissionPart, int Sequence);
 
-        public record Plan(List<Waypoint> Waypoints, int MissionPartCount, double TotalDistanceM, double TotalFlightMinutes);
+        public record Plan(List<Waypoint> Waypoints, int MissionPartCount, double TotalDistanceM,
+            double TotalFlightMinutes, int OffPolygonLegCount = 0);
 
         // Standard ray-casting/even-odd test, run across every ring (outer + holes)
         // together - a point inside a hole gets toggled an extra time by that hole's own
@@ -111,8 +112,13 @@ namespace TreeCounterAddin
             if (xs.Count == 0)
                 xs.Add((minX + maxX) / 2.0);
 
-            var orderedWaypoints = new List<(double X, double Y)>();
-            var lineParity = 0;
+            // Split each line into contiguous in-polygon runs rather than one flat list - a
+            // concave boundary can make a single line exit the polygon and re-enter it further
+            // along (real case, 2026-08-14: a river-bend notch cutting into a survey polygon).
+            // Naively connecting the last point before that gap straight to the first point
+            // after it draws a long chord straight through the excluded area - visibly outside
+            // the site on the map.
+            var perLineRuns = new List<List<List<(double X, double Y)>>>();
             foreach (var x in xs)
             {
                 var ys = new List<double>();
@@ -121,15 +127,60 @@ namespace TreeCounterAddin
                 if (ys.Count == 0)
                     ys.Add((minY + maxY) / 2.0);
 
-                var linePoints = ys.Where(y => PointInPolygon(x, y, toLocal)).Select(y => (x, y)).ToList();
-                if (linePoints.Count == 0) continue;
+                List<(double X, double Y)> currentRun = null;
+                var runs = new List<List<(double X, double Y)>>();
+                foreach (var y in ys)
+                {
+                    if (PointInPolygon(x, y, toLocal))
+                    {
+                        currentRun ??= new List<(double X, double Y)>();
+                        currentRun.Add((x, y));
+                    }
+                    else if (currentRun != null)
+                    {
+                        runs.Add(currentRun);
+                        currentRun = null;
+                    }
+                }
+                if (currentRun != null) runs.Add(currentRun);
+                perLineRuns.Add(runs);
+            }
 
-                // Boustrophedon: alternate direction line-to-line so consecutive lines connect
-                // at their nearest ends instead of the drone jumping back across the whole site
-                // after every single pass.
-                if (lineParity % 2 == 1) linePoints.Reverse();
-                orderedWaypoints.AddRange(linePoints);
-                lineParity++;
+            // Fly every line's *first* run before touching any line's second run, etc., instead
+            // of finishing one line's runs (first run, then straight back to that same line's
+            // second run - a chord straight through the same gap just split apart) before moving
+            // on. Consecutive lines rarely both need a second run at the same place, so this pass
+            // structure naturally keeps each leg short and between points that are actually
+            // inside, instead of jumping the full length of a gap on one line.
+            var orderedWaypoints = new List<(double X, double Y)>();
+            var segmentParity = 0;
+            var maxRunsPerLine = perLineRuns.Count == 0 ? 0 : perLineRuns.Max(r => r.Count);
+            for (var passIndex = 0; passIndex < maxRunsPerLine; passIndex++)
+            {
+                foreach (var runs in perLineRuns)
+                {
+                    if (passIndex >= runs.Count) continue;
+                    var run = runs[passIndex];
+                    if (segmentParity % 2 == 1) run.Reverse();
+                    orderedWaypoints.AddRange(run);
+                    segmentParity++;
+                }
+            }
+
+            // Splitting each line into contiguous runs (above) fixes the common case, but a
+            // transit leg landing exactly on a run that sits at the edge of the sweep range can
+            // still connect two points whose straight-line midpoint falls outside the polygon
+            // (real case, 2026-08-14: a river-bend notch in a survey polygon) - full obstacle-
+            // aware routing is out of scope here, so this just counts how often it still happens
+            // and reports it rather than staying silent about a flight path that visibly leaves
+            // the survey area on the map.
+            var offPolygonLegCount = 0;
+            for (var i = 0; i < orderedWaypoints.Count - 1; i++)
+            {
+                var (x1, y1) = orderedWaypoints[i];
+                var (x2, y2) = orderedWaypoints[i + 1];
+                if (!PointInPolygon((x1 + x2) / 2.0, (y1 + y2) / 2.0, toLocal))
+                    offPolygonLegCount++;
             }
 
             // Un-rotate back to real-world coordinates, then split into battery-sized parts by
@@ -171,7 +222,8 @@ namespace TreeCounterAddin
             }
 
             var totalMinutes = speedMs > 0 ? totalDistanceM / speedMs / 60.0 : 0;
-            return new Plan(waypoints, waypoints.Count == 0 ? 0 : missionPart, totalDistanceM, totalMinutes);
+            return new Plan(waypoints, waypoints.Count == 0 ? 0 : missionPart, totalDistanceM, totalMinutes,
+                offPolygonLegCount);
         }
 
         /// <summary>

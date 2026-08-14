@@ -128,12 +128,18 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0" Text="{Binding FlightDirectionDeg}"
                                                  ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Direction}"/>
-                                        <Button Grid.Column="1" Content="Suggest" Command="{Binding SuggestDirectionCommand}"
+                                        <Button Grid.Column="1" Content="V" Command="{Binding SetDirectionVerticalCommand}"
+                                                Padding="6,0" Margin="4,0,0,0" ToolTip="Vertical - lines run north-south (0 deg)."/>
+                                        <Button Grid.Column="2" Content="H" Command="{Binding SetDirectionHorizontalCommand}"
+                                                Padding="6,0" Margin="4,0,0,0" ToolTip="Horizontal - lines run east-west (90 deg)."/>
+                                        <Button Grid.Column="3" Content="Suggest" Command="{Binding SuggestDirectionCommand}"
                                                 Padding="6,0" Margin="4,0,0,0"
-                                                ToolTip="Analyzes the survey polygon's shape and fills in the direction that fits it best (fewer, longer coverage lines instead of many short zigzag columns)."/>
+                                                ToolTip="Analyzes the survey polygon's shape and fills in the direction that fits it best (fewer, longer coverage lines instead of many short zigzag columns) - usually a better fit than a plain Vertical/Horizontal guess."/>
                                     </Grid>
                                     <TextBlock Grid.Row="7" Grid.Column="0" Text="Speed (m/s)" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Speed}"/>

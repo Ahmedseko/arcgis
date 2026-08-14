@@ -249,9 +249,15 @@ namespace TreeCounterAddin
                 _lastFlightPlan = plan;
                 _lastFlightPlanSpatialReference = sr;
 
+                var warning = plan.OffPolygonLegCount > 0
+                    ? $" Heads up: {plan.OffPolygonLegCount} transit leg(s) may cut outside the survey " +
+                        "polygon near a concave/irregular part of its boundary - check the flight path " +
+                        "layer on the map before flying, and consider editing the polygon boundary to be " +
+                        "more precise there."
+                    : "";
                 FlightMissionStatus = $"Done: {plan.Waypoints.Count} waypoints, {plan.MissionPartCount} mission " +
                     $"part(s) (~{plan.TotalFlightMinutes:F1} min flight time, {plan.TotalDistanceM / 1000.0:F2} km " +
-                    "total). Pick an export format below and click Export Mission to save for your drone app.";
+                    $"total). Pick an export format below and click Export Mission to save for your drone app.{warning}";
             }
             catch (Exception ex)
             {
@@ -341,6 +347,12 @@ namespace TreeCounterAddin
 
         public ICommand SuggestDirectionCommand => new RelayCommand(async () => await SuggestDirectionAsync(),
             () => SelectedFlightPlanningLayer != null);
+
+        // Quick manual overrides for the common cases, alongside Suggest - a site that's
+        // obviously a rectangle running due north-south/east-west doesn't need the 180-angle
+        // search, and some users just want to try both without typing exact degrees.
+        public ICommand SetDirectionVerticalCommand => new RelayCommand(() => FlightDirectionDeg = 0);
+        public ICommand SetDirectionHorizontalCommand => new RelayCommand(() => FlightDirectionDeg = 90);
 
         // Picks the compass bearing that minimizes the number of coverage lines needed, i.e.
         // aligns flight lines with the survey polygon's own long axis instead of cutting across
