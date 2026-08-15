@@ -50,17 +50,41 @@ namespace TreeCounterAddin
         {
             using var engine = new TesseractEngine(tessdataPath, "eng", EngineMode.Default);
 
+            Result TryRegion(Pix image)
+            {
+                var text = RunOcr(engine, image);
+                return expectUtm
+                    ? TryParseUtmGrid(text) ?? TryParseBareEastingNorthing(text, defaultZone, defaultIsSouth)
+                    : ParseDecimalDegrees(text);
+            }
+
             // OCR-ing the whole photo reads the surrounding scene (trees, gravel, people) as
-            // noise and returns garbage text - these watermark apps put the text as a block
-            // along the bottom-left of the frame (bottom-right is often a small map preview
-            // thumbnail instead, excluded here since mixing it into the same crop confuses
-            // page segmentation). Falls back to the full image if nothing parseable came out
-            // of the crop, in case a photo's watermark sits somewhere else entirely.
-            var croppedText = RunOcr(engine, LoadCroppedBottomLeftRegion(photoPath, 0.4, 0.75));
-            var result = expectUtm
-                ? TryParseUtmGrid(croppedText) ?? TryParseBareEastingNorthing(croppedText, defaultZone, defaultIsSouth)
-                : ParseDecimalDegrees(croppedText);
-            if (result != null && result.X.HasValue) return result;
+            // noise and returns garbage text - these watermark apps put the coordinate text as
+            // a block in one corner, and which corner varies a lot by camera app (three real
+            // examples, 2026-08-15: this org's own "GPS Map Camera"-style app puts it
+            // bottom-left with a small thumbnail bottom-right; a different app puts small
+            // right-aligned text bottom-right with the thumbnail bottom-left; "Timemark" puts a
+            // large multi-line block bottom-left with no thumbnail at all but a logo top-right;
+            // yet another puts a small two-line block top-right). Mixing the text into the same
+            // crop as a thumbnail/logo/background confuses page segmentation, so try each corner
+            // in turn (most-common first) before falling back to the full image.
+            // Two passes per corner, tight crop first: a small isolated watermark (most common)
+            // reads best with a tight crop that excludes as much surrounding scene noise as
+            // possible, but a large multi-line block (e.g. the "Timemark" app's oversized
+            // "Koordinat: ..." text) needs a taller crop to avoid being cut off - and a crop
+            // sized for the large-block case picks up enough extra scene noise to break the
+            // small-watermark case (verified: 0.55 height fixed the large-block photo but broke
+            // the small-watermark one that 0.4 height had just fixed). Try the tight crop across
+            // all four corners before trying the tall one, rather than exhausting one corner's
+            // heights before moving to the next - the tight crop is the more common shape.
+            foreach (var heightFraction in new[] { 0.4, 0.55 })
+            {
+                foreach (var (fromBottom, fromRight) in new[] { (true, false), (true, true), (false, true), (false, false) })
+                {
+                    var cornerResult = TryRegion(LoadCroppedCornerRegion(photoPath, heightFraction, 0.65, fromBottom, fromRight));
+                    if (cornerResult != null && cornerResult.X.HasValue) return cornerResult;
+                }
+            }
 
             var fullText = RunOcr(engine, Pix.LoadFromFile(photoPath));
             return expectUtm
@@ -78,14 +102,16 @@ namespace TreeCounterAddin
                 return page.GetText() ?? "";
         }
 
-        private static Pix LoadCroppedBottomLeftRegion(string photoPath, double bottomFraction, double leftFraction)
+        private static Pix LoadCroppedCornerRegion(string photoPath, double heightFraction, double widthFraction,
+            bool fromBottom, bool fromRight)
         {
             var decoder = BitmapDecoder.Create(new Uri(photoPath), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
             var frame = decoder.Frames[0];
-            var cropHeight = Math.Max(1, (int)(frame.PixelHeight * bottomFraction));
-            var cropWidth = Math.Max(1, (int)(frame.PixelWidth * leftFraction));
-            var top = frame.PixelHeight - cropHeight;
-            var cropped = new CroppedBitmap(frame, new Int32Rect(0, top, cropWidth, cropHeight));
+            var cropHeight = Math.Max(1, (int)(frame.PixelHeight * heightFraction));
+            var cropWidth = Math.Max(1, (int)(frame.PixelWidth * widthFraction));
+            var top = fromBottom ? frame.PixelHeight - cropHeight : 0;
+            var left = fromRight ? frame.PixelWidth - cropWidth : 0;
+            var cropped = new CroppedBitmap(frame, new Int32Rect(left, top, cropWidth, cropHeight));
 
             using var ms = new MemoryStream();
             var encoder = new PngBitmapEncoder();
