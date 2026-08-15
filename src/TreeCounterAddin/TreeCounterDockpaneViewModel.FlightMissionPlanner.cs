@@ -102,6 +102,17 @@ namespace TreeCounterAddin
             set => SetProperty(ref _maxFlightMinutesPerBattery, value);
         }
 
+        // Also flies a second pass at 90 deg from the main direction - standard photogrammetry
+        // technique for better 3D reconstruction (building facades and other vertical features
+        // get seen from more angles than a single-direction grid manages). Roughly doubles
+        // flight time/mission parts/photo count, so it's opt-in, not the default.
+        private bool _crossHatch;
+        public bool CrossHatch
+        {
+            get => _crossHatch;
+            set => SetProperty(ref _crossHatch, value);
+        }
+
         // Two export formats because no single format actually covers "every DJI drone":
         // Litchi CSV works with the consumer lineup (Mavic 3 Classic, Air/Mini series - the
         // apps for those, DJI Fly, have no waypoint-mission import at all), DJI Pilot 2 KMZ
@@ -195,7 +206,7 @@ namespace TreeCounterAddin
                     var generated = FlightMissionMath.GenerateCoveragePlan(
                         outer, holes, FlightAltitudeM, FlightGsdCmPerPx, FlightImageWidthPx, FlightImageHeightPx,
                         FlightFrontOverlapPct, FlightSideOverlapPct, FlightDirectionDeg, FlightSpeedMs,
-                        MaxFlightMinutesPerBattery);
+                        MaxFlightMinutesPerBattery, CrossHatch);
                     if (generated.Waypoints.Count == 0)
                         return (generated, "No waypoints generated. " +
                             FlightMissionMath.DescribeCoverageFailure(outer, FlightGsdCmPerPx, FlightImageWidthPx,

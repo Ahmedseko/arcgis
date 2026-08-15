@@ -93,7 +93,39 @@ namespace TreeCounterAddin
         /// <param name="speedMs">Cruise speed, used to convert distance into estimated flight time.</param>
         /// <param name="maxFlightMinutesPerBattery">Mission is cut into a new part whenever adding
         /// the next leg would push a part's own flight time over this budget.</param>
+        /// <param name="crossHatch">Also flies a second pass at flightDirectionDeg+90 and appends
+        /// it as further mission parts - two perpendicular passes over the same site, a standard
+        /// photogrammetry technique for better 3D reconstruction (building facades and other
+        /// vertical features get seen from more angles than a single-direction grid manages).</param>
         public static Plan GenerateCoveragePlan(
+            IReadOnlyList<(double X, double Y)> outerRing,
+            IReadOnlyList<IReadOnlyList<(double X, double Y)>> holes,
+            double altitudeM, double gsdCmPerPx, int imageWidthPx, int imageHeightPx,
+            double frontOverlapPct, double sideOverlapPct, double flightDirectionDeg,
+            double speedMs, double maxFlightMinutesPerBattery, bool crossHatch = false)
+        {
+            var primary = GenerateSinglePassPlan(outerRing, holes, altitudeM, gsdCmPerPx, imageWidthPx,
+                imageHeightPx, frontOverlapPct, sideOverlapPct, flightDirectionDeg, speedMs,
+                maxFlightMinutesPerBattery);
+            if (!crossHatch) return primary;
+
+            var secondary = GenerateSinglePassPlan(outerRing, holes, altitudeM, gsdCmPerPx, imageWidthPx,
+                imageHeightPx, frontOverlapPct, sideOverlapPct, flightDirectionDeg + 90, speedMs,
+                maxFlightMinutesPerBattery);
+
+            var partOffset = primary.MissionPartCount;
+            var mergedWaypoints = new List<Waypoint>(primary.Waypoints);
+            mergedWaypoints.AddRange(secondary.Waypoints.Select(w => w with { MissionPart = w.MissionPart + partOffset }));
+
+            return new Plan(
+                mergedWaypoints,
+                primary.MissionPartCount + secondary.MissionPartCount,
+                primary.TotalDistanceM + secondary.TotalDistanceM,
+                primary.TotalFlightMinutes + secondary.TotalFlightMinutes,
+                primary.OffPolygonLegCount + secondary.OffPolygonLegCount);
+        }
+
+        private static Plan GenerateSinglePassPlan(
             IReadOnlyList<(double X, double Y)> outerRing,
             IReadOnlyList<IReadOnlyList<(double X, double Y)>> holes,
             double altitudeM, double gsdCmPerPx, int imageWidthPx, int imageHeightPx,
@@ -289,9 +321,12 @@ namespace TreeCounterAddin
             // Un-rotate back to real-world coordinates, then split into battery-sized parts by
             // walking the ordered sequence and cutting whenever the *current part's own*
             // accumulated flight time would exceed the budget (each part is treated as its own
-            // fresh battery/launch, not a continuous flight - the transit between where one
-            // part ends and the next begins is on the operator to reposition for, same
-            // simplification FlyPath-style tools make).
+            // fresh battery/launch, not a continuous flight - the transit between where one part
+            // ends and the next begins is on the operator to reposition for). The cut point is
+            // repeated as a seam waypoint - the closing waypoint of the part that's ending *and*
+            // the opening waypoint of the next one - so the two parts share an exact coordinate
+            // instead of each just picking up wherever the sequence happened to land; the next
+            // battery's takeoff lines up exactly with where the previous one left off.
             var waypoints = new List<Waypoint>();
             var missionPart = 1;
             var sequence = 0;
@@ -310,6 +345,7 @@ namespace TreeCounterAddin
                     if (partSeconds + legSeconds > budgetSeconds && waypoints.Count > 0 &&
                         waypoints[^1].MissionPart == missionPart)
                     {
+                        waypoints.Add(new Waypoint(worldX, worldY, altitudeM, missionPart, sequence++));
                         missionPart++;
                         sequence = 0;
                         partSeconds = 0;

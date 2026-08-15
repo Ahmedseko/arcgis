@@ -183,6 +183,30 @@ var splitPlan = FlightMissionMath.GenerateCoveragePlan(
 Check("GenerateCoveragePlan: a tight battery budget splits into multiple mission parts",
     splitPlan.MissionPartCount > plan.MissionPartCount);
 
+// A part boundary should share an exact coordinate (a "seam" waypoint) between the closing
+// waypoint of the part that's ending and the opening waypoint of the next one, so the next
+// battery's takeoff lines up exactly with where the previous one left off, instead of each part
+// just picking up wherever the sequence happened to land.
+var part1Last = splitPlan.Waypoints.Last(w => w.MissionPart == 1);
+var part2First = splitPlan.Waypoints.First(w => w.MissionPart == 2);
+Check("GenerateCoveragePlan: consecutive mission parts share a seam waypoint",
+    Math.Abs(part1Last.X - part2First.X) < 1e-6 && Math.Abs(part1Last.Y - part2First.Y) < 1e-6);
+
+// --- GenerateCoveragePlan cross-hatch mode ---
+// A second pass at +90deg, appended as further mission parts - roughly doubles waypoints/parts
+// and the two passes should actually run perpendicular to each other, not just be a duplicate.
+var crossHatchPlan = FlightMissionMath.GenerateCoveragePlan(
+    surveyArea, new List<IReadOnlyList<(double X, double Y)>>(),
+    altitudeM: 50, gsdCmPerPx: 2, imageWidthPx: 1000, imageHeightPx: 1000,
+    frontOverlapPct: 50, sideOverlapPct: 50, flightDirectionDeg: 0,
+    speedMs: 8, maxFlightMinutesPerBattery: 20, crossHatch: true);
+Check("GenerateCoveragePlan: cross-hatch roughly doubles the mission parts",
+    crossHatchPlan.MissionPartCount == plan.MissionPartCount * 2);
+Check("GenerateCoveragePlan: cross-hatch roughly doubles the waypoint count",
+    crossHatchPlan.Waypoints.Count > plan.Waypoints.Count * 1.8);
+Check("GenerateCoveragePlan: cross-hatch's second pass parts continue the numbering, not restart at 1",
+    crossHatchPlan.Waypoints.Any(w => w.MissionPart == plan.MissionPartCount + 1));
+
 // --- WpmlBuilder.BuildTemplateKml ---
 // Real-world risk here isn't a math bug, it's a malformed/incomplete XML that DJI Pilot 2
 // silently rejects - the one check worth having is "does this actually parse, and does it

@@ -94,6 +94,7 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <!-- ToolTip on both the label and the box (same bilingual lookup, see
                                          BilingualTooltipConverter.cs) - hover either to see it, and it
@@ -147,6 +148,8 @@
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Battery}"/>
                                     <TextBox Grid.Row="9" Grid.Column="1" Text="{Binding MaxFlightMinutesPerBattery}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Battery}"/>
+                                    <CheckBox Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Content="Cross-hatch (fly a second pass at 90°, for better 3D reconstruction)"
+                                              IsChecked="{Binding CrossHatch}" Margin="0,4,0,2"/>
                                 </Grid>
 
                                 <StackPanel Orientation="Horizontal">
