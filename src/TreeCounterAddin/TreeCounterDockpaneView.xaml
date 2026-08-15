@@ -291,7 +291,8 @@
                                     </StackPanel>
                                 </StackPanel>
 
-                                <Button Content="Scan Photos..." Command="{Binding ScanPhotosForCoordinatesCommand}" Style="{StaticResource ActionButton}"/>
+                                <Button Content="Select Photos to Scan..." Command="{Binding ScanPhotosForCoordinatesCommand}" Style="{StaticResource ActionButton}"
+                                        ToolTip="Opens a file picker to choose photos first, then scans whichever ones you select."/>
 
                                 <ProgressBar IsIndeterminate="True" Height="14" Margin="0,8,0,0"
                                              Visibility="{Binding IsScanningPhotos, Converter={StaticResource BoolToVis}}"/>
