@@ -188,11 +188,17 @@ def build_cleared_mask_obia(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
                          mask=valid, start_label=0, channel_axis=-1)
 
         # Per-segment mean ExG via bincount instead of scipy.ndimage.mean/a Python loop -
-        # segments is already a dense 0..num_labels-1 label image (skimage's guarantee),
-        # so a weighted bincount is the vectorized equivalent of a groupby-mean.
+        # segments is dense 0..num_labels-1 *within the masked region* (skimage's
+        # guarantee), but slic(mask=...) labels every pixel OUTSIDE the mask -1, which
+        # bincount can't index - drop those before counting (this org's real orthophotos
+        # always have some nodata border/edge pixels in at least one block, so this isn't
+        # a hypothetical: it crashed the first time this prototype ran against a real
+        # raster, 2026-08-16). The final `& valid` already zeroes those pixels out of the
+        # result regardless of what cleared_by_label[-1] would otherwise resolve to.
+        in_mask = segments >= 0
         num_labels = int(segments.max()) + 1
-        sums = np.bincount(segments.ravel(), weights=exg.ravel(), minlength=num_labels)
-        counts = np.bincount(segments.ravel(), minlength=num_labels)
+        sums = np.bincount(segments[in_mask], weights=exg[in_mask], minlength=num_labels)
+        counts = np.bincount(segments[in_mask], minlength=num_labels)
         cleared_by_label = (sums / np.maximum(counts, 1)) < exg_threshold
         cleared = cleared_by_label[segments] & valid
 
