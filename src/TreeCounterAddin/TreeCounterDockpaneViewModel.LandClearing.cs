@@ -46,6 +46,65 @@ namespace TreeCounterAddin
             set => SetProperty(ref _minClearingAreaHa, value);
         }
 
+        // Bindable now (Settings tab > Land Clearing Parameters) rather than the hardcoded
+        // DEFAULT_EXG_THRESHOLD/DEFAULT_SMOOTH_PX/OPENING_ITERATIONS/CLOSING_ITERATIONS
+        // constants this used to always pass through unchanged - a real report (2026-08-16)
+        // found the default smoothing (tuned against one specific site's ground truth) gave
+        // a rougher, more fragmented result on a different site's imagery than the same
+        // detection in QGIS, with narrower real clearings eroded away entirely. Defaults here
+        // match backend/land_clearing.py's own module defaults, so an unchanged panel behaves
+        // exactly as before.
+        private double _landClearingExgThreshold = 18;
+        public double LandClearingExgThreshold
+        {
+            get => _landClearingExgThreshold;
+            set => SetProperty(ref _landClearingExgThreshold, value);
+        }
+
+        private double _landClearingSmoothPx = 3;
+        public double LandClearingSmoothPx
+        {
+            get => _landClearingSmoothPx;
+            set => SetProperty(ref _landClearingSmoothPx, value);
+        }
+
+        // Erosion pass that strips small false "cleared" specks - lower keeps narrower real
+        // clearings from being eroded away entirely instead of just removing noise.
+        private int _landClearingOpeningIterations = 6;
+        public int LandClearingOpeningIterations
+        {
+            get => _landClearingOpeningIterations;
+            set => SetProperty(ref _landClearingOpeningIterations, value);
+        }
+
+        // Dilation pass that fills small gaps/merges nearby fragments - higher gives
+        // smoother, more human-digitization-like boundaries instead of many small blobs.
+        private int _landClearingClosingIterations = 15;
+        public int LandClearingClosingIterations
+        {
+            get => _landClearingClosingIterations;
+            set => SetProperty(ref _landClearingClosingIterations, value);
+        }
+
+        // Also requires bright + reddish raw RGB - the ExG-only threshold reads roads/rivers
+        // as "cleared" too since they also have low greenness, but they're darker/bluer than
+        // freshly bared soil. Off by default (matches the QGIS original) - a real accuracy
+        // check found it a more targeted false-positive filter than the opening/closing
+        // smoothing above for roads/rivers specifically inflating results.
+        private bool _landClearingFreshColor;
+        public bool LandClearingFreshColor
+        {
+            get => _landClearingFreshColor;
+            set => SetProperty(ref _landClearingFreshColor, value);
+        }
+
+        private double _landClearingBrightMin = 120;
+        public double LandClearingBrightMin
+        {
+            get => _landClearingBrightMin;
+            set => SetProperty(ref _landClearingBrightMin, value);
+        }
+
         private bool _isDetectingLandClearing;
         public bool IsDetectingLandClearing
         {
@@ -114,8 +173,10 @@ namespace TreeCounterAddin
                 var outputFc = Path.Combine(project.DefaultGeodatabasePath, $"LandClearing_{stamp}");
 
                 var request = new LandClearingRequest(
-                    rasterPath, outputFc, DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX,
-                    MinClearingAreaHa * 10000.0, excludeFcPath);
+                    rasterPath, outputFc, LandClearingExgThreshold, LandClearingSmoothPx,
+                    MinClearingAreaHa * 10000.0, excludeFcPath,
+                    LandClearingOpeningIterations, LandClearingClosingIterations,
+                    LandClearingFreshColor, LandClearingBrightMin);
 
                 var dispatcher = System.Windows.Application.Current.Dispatcher;
                 var result = await PythonBackendService.RunLandClearingAsync(
@@ -159,11 +220,5 @@ namespace TreeCounterAddin
                 IsDetectingLandClearing = false;
             }
         }
-
-        // Matches backend/land_clearing.py's own defaults - not exposed as UI sliders yet
-        // (unlike Tree Detection's Advanced Parameters), since there's no field-tested
-        // reason yet to need per-run tuning here. Add controls if that changes.
-        private const double DEFAULT_EXG_THRESHOLD = 18;
-        private const double DEFAULT_SMOOTH_PX = 3;
     }
 }

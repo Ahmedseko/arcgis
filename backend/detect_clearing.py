@@ -18,7 +18,10 @@ import sys
 
 import arcpy
 
-from land_clearing import detect_land_clearing, DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX
+from land_clearing import (
+    detect_land_clearing, DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX,
+    OPENING_ITERATIONS, CLOSING_ITERATIONS,
+)
 
 
 def main() -> int:
@@ -28,6 +31,10 @@ def main() -> int:
     parser.add_argument("--summary", required=True)
     parser.add_argument("--exg-threshold", type=float, default=DEFAULT_EXG_THRESHOLD)
     parser.add_argument("--smooth-px", type=float, default=DEFAULT_SMOOTH_PX)
+    parser.add_argument("--opening-iterations", type=int, default=OPENING_ITERATIONS,
+                         help="Erosion pass that strips small false 'cleared' specks - lower keeps narrower real clearings from being eroded away")
+    parser.add_argument("--closing-iterations", type=int, default=CLOSING_ITERATIONS,
+                         help="Dilation pass that fills small gaps/merges nearby fragments - higher gives smoother, more human-digitization-like boundaries")
     parser.add_argument("--method", choices=["exg", "obia"], default="exg",
                          help="obia = SLIC-superpixel prototype, see land_clearing.py")
     parser.add_argument("--fresh-color", action="store_true",
@@ -51,6 +58,7 @@ def main() -> int:
             args.raster, mask_raster,
             exg_threshold=args.exg_threshold, smooth_px=args.smooth_px, method=args.method,
             fresh_color=args.fresh_color, bright_min=args.bright_min,
+            opening_iterations=args.opening_iterations, closing_iterations=args.closing_iterations,
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True),
         )
 

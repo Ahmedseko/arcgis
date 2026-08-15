@@ -628,6 +628,48 @@
                             </Grid>
                         </Expander>
 
+                        <Expander Header="Land Clearing Parameters" Margin="0,0,0,8">
+                            <StackPanel Margin="0,6,0,0">
+                                <TextBlock Text="Result too rough/fragmented, or missing narrower real clearings? Lower Opening and/or raise Closing - each site's imagery (camera, lighting, soil color) can need different smoothing than the defaults."
+                                           TextWrapping="Wrap" Margin="0,0,0,6" FontSize="11" Foreground="Gray"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="140"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="ExG Threshold" VerticalAlignment="Center"
+                                               ToolTip="Below this, a pixel counts as bare/cleared ground instead of vegetation. Lower catches more area as cleared (risks false positives); higher catches less (risks missing real clearings)."/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding LandClearingExgThreshold}" Margin="0,2"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Smooth (px)" VerticalAlignment="Center"
+                                               ToolTip="Gaussian blur applied before thresholding - reduces speckle from individual noisy pixels."/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding LandClearingSmoothPx}" Margin="0,2"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Opening (erosion)" VerticalAlignment="Center"
+                                               ToolTip="Strips small false 'cleared' specks - but can also erase real clearings narrower than this many pixels. Lower if real narrow clearings are missing."/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding LandClearingOpeningIterations}" Margin="0,2"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Closing (dilation)" VerticalAlignment="Center"
+                                               ToolTip="Fills small gaps and merges nearby fragments into one shape - raise for smoother, more human-digitization-like boundaries instead of many small blobs."/>
+                                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding LandClearingClosingIterations}" Margin="0,2"/>
+                                </Grid>
+                                <CheckBox Content="Fresh color filter (also require bright + reddish soil - excludes roads/rivers)"
+                                          IsChecked="{Binding LandClearingFreshColor}" Margin="0,6,0,2"/>
+                                <Grid Visibility="{Binding LandClearingFreshColor, Converter={StaticResource BoolToVis}}" Margin="0,2,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="140"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Brightness minimum" VerticalAlignment="Center"
+                                               ToolTip="How bright (0-255) raw RGB has to be to count as bare soil, not a darker road/river."/>
+                                    <TextBox Grid.Column="1" Text="{Binding LandClearingBrightMin}" Margin="0,2"/>
+                                </Grid>
+                            </StackPanel>
+                        </Expander>
+
                         <Expander Header="AI Vision Validation" Margin="0,0,0,8">
                             <Grid Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>

@@ -149,5 +149,9 @@ namespace TreeCounterAddin
         // stricter/narrower mask more than land_clearing.py's own area-overlap target
         // does - see backend/road_extraction.py's DEFAULT_ROAD_EXG_THRESHOLD docstring.
         private const double ROAD_EXG_THRESHOLD = 8;
+
+        // Own copy, not LandClearing.cs's (that one became a bindable
+        // LandClearingSmoothPx property, no longer a fixed constant to share).
+        private const double DEFAULT_SMOOTH_PX = 3;
     }
 }

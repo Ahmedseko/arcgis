@@ -16,7 +16,8 @@ namespace TreeCounterAddin
     internal record DetectionResult(bool Success, bool Cancelled, int TreeCount, string OutputFc, string ErrorMessage, double AreaHa = 0, int FilteredClearedCount = 0);
 
     internal record LandClearingRequest(
-        string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinAreaM2, string ExcludeFc = null);
+        string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinAreaM2, string ExcludeFc = null,
+        int OpeningIterations = 6, int ClosingIterations = 15, bool FreshColor = false, double BrightMin = 120.0);
 
     internal record LandClearingResult(bool Success, bool Cancelled, int PolygonCount, string OutputFc, string ErrorMessage, double AreaHa = 0);
 
@@ -181,7 +182,14 @@ namespace TreeCounterAddin
             psi.ArgumentList.Add("--summary"); psi.ArgumentList.Add(summaryPath);
             psi.ArgumentList.Add("--exg-threshold"); psi.ArgumentList.Add(request.ExgThreshold.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--smooth-px"); psi.ArgumentList.Add(request.SmoothPx.ToString(CultureInfo.InvariantCulture));
+            psi.ArgumentList.Add("--opening-iterations"); psi.ArgumentList.Add(request.OpeningIterations.ToString(CultureInfo.InvariantCulture));
+            psi.ArgumentList.Add("--closing-iterations"); psi.ArgumentList.Add(request.ClosingIterations.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--min-area-m2"); psi.ArgumentList.Add(request.MinAreaM2.ToString(CultureInfo.InvariantCulture));
+            if (request.FreshColor)
+            {
+                psi.ArgumentList.Add("--fresh-color");
+                psi.ArgumentList.Add("--bright-min"); psi.ArgumentList.Add(request.BrightMin.ToString(CultureInfo.InvariantCulture));
+            }
             if (!string.IsNullOrWhiteSpace(request.ExcludeFc))
             {
                 psi.ArgumentList.Add("--exclude-fc"); psi.ArgumentList.Add(request.ExcludeFc);

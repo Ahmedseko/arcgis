@@ -82,6 +82,7 @@ CLOSING_ITERATIONS = 15  # then: fill small gaps/holes inside real clearings
 
 def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_px=DEFAULT_SMOOTH_PX,
                         fill_holes=True, fresh_color=False, bright_min=120.0,
+                        opening_iterations=OPENING_ITERATIONS, closing_iterations=CLOSING_ITERATIONS,
                         block_size=3000, overlap=150, progress_cb=None):
     """
     Returns (mask, info): mask is a full-raster-size uint8 numpy array (1 = cleared/bare
@@ -99,6 +100,16 @@ def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_
     CLOSING_ITERATIONS) found it a more targeted false-positive filter than blob-size
     erosion (the opening pass removed there) - worth trying on site imagery where
     roads/rivers are inflating false positives.
+
+    opening_iterations/closing_iterations override the OPENING_ITERATIONS/CLOSING_ITERATIONS
+    module defaults (tuned against one specific site's ground truth - see that comment) -
+    exposed as parameters, not just constants, because a real report (2026-08-16, a
+    different site's imagery) found the result "rougher" and missing narrower real
+    clearings than the same detection in QGIS: the global defaults don't necessarily suit
+    every site's imagery (different camera, lighting, soil color), and there's no ground
+    truth for every site to re-run the sweep against. Raising closing smooths/merges
+    fragments into more human-digitization-like blobs; lowering opening keeps narrower
+    real clearings from being eroded away entirely.
     """
     info = RasterInfo(raster_path)
     H, W = info.H, info.W
@@ -144,8 +155,8 @@ def build_cleared_mask(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD, smooth_
         # byte/px) to hold and process whole.
         if progress_cb:
             progress_cb(80)
-        mask = ndimage.binary_opening(mask, iterations=OPENING_ITERATIONS)
-        mask = ndimage.binary_closing(mask, iterations=CLOSING_ITERATIONS).astype(np.uint8)
+        mask = ndimage.binary_opening(mask, iterations=opening_iterations)
+        mask = ndimage.binary_closing(mask, iterations=closing_iterations).astype(np.uint8)
 
     if progress_cb:
         progress_cb(90)
@@ -218,6 +229,7 @@ def build_cleared_mask_obia(raster_path, exg_threshold=DEFAULT_EXG_THRESHOLD,
 def detect_land_clearing(raster_path, output_mask_raster, exg_threshold=DEFAULT_EXG_THRESHOLD,
                           smooth_px=DEFAULT_SMOOTH_PX, fill_holes=True,
                           fresh_color=False, bright_min=120.0,
+                          opening_iterations=OPENING_ITERATIONS, closing_iterations=CLOSING_ITERATIONS,
                           block_size=3000, overlap=150, progress_cb=None, method="exg"):
     """
     Writes a single-band raster to output_mask_raster (same extent/spatial reference as
@@ -226,15 +238,17 @@ def detect_land_clearing(raster_path, output_mask_raster, exg_threshold=DEFAULT_
     class, with nothing else to filter out afterward). Returns output_mask_raster.
 
     method="exg" (default) is build_cleared_mask; method="obia" is the SLIC-based
-    build_cleared_mask_obia prototype - see its docstring. fresh_color/bright_min only
-    apply to method="exg" - see build_cleared_mask's docstring.
+    build_cleared_mask_obia prototype - see its docstring. fresh_color/bright_min/
+    opening_iterations/closing_iterations only apply to method="exg" - see
+    build_cleared_mask's docstring.
     """
     if method == "obia":
         mask, info = build_cleared_mask_obia(raster_path, exg_threshold, block_size=block_size,
                                               overlap=overlap, progress_cb=progress_cb)
     else:
         mask, info = build_cleared_mask(raster_path, exg_threshold, smooth_px, fill_holes,
-                                         fresh_color, bright_min, block_size, overlap, progress_cb)
+                                         fresh_color, bright_min, opening_iterations, closing_iterations,
+                                         block_size, overlap, progress_cb)
     lower_left = arcpy.Point(info.xmin, info.ymax - info.H * info.px_size)
     raster = arcpy.NumPyArrayToRaster(mask, lower_left, info.px_size, info.px_size, value_to_nodata=0)
     raster.save(output_mask_raster)
