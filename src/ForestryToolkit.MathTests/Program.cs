@@ -80,6 +80,26 @@ Check("GenerateCoveragePlan: sequence restarts at 0 for every mission part",
 Check("GenerateCoveragePlan: roughly 10 lines x 11 waypoints for a 100x100m square at 10m spacing",
     plan.Waypoints.Count is >= 90 and <= 121);
 
+// Real report (2026-08-14): a coverage column stopped at whatever fixed-grid waypoint-spacing
+// multiple happened to fall inside the polygon, leaving a visible gap between the flat-cut end
+// of the column and a diagonal/tapered polygon edge above it, instead of following the edge.
+// Right triangle (0,0)-(100,0)-(100,100): the diagonal hypotenuse means each column's true top
+// boundary is y=x, not a multiple of the 10m waypoint spacing - the topmost waypoint on any
+// column should land within a couple meters of that true boundary (the small edge-inset safety
+// margin), not stop up to a full waypoint-spacing (10m) short of it.
+var triangleArea = new List<(double X, double Y)> { (0, 0), (100, 0), (100, 100) };
+var trianglePlan = FlightMissionMath.GenerateCoveragePlan(
+    triangleArea, new List<IReadOnlyList<(double X, double Y)>>(),
+    altitudeM: 50, gsdCmPerPx: 2, imageWidthPx: 1000, imageHeightPx: 1000,
+    frontOverlapPct: 50, sideOverlapPct: 50, flightDirectionDeg: 0,
+    speedMs: 8, maxFlightMinutesPerBattery: 20);
+var worstEdgeGap = trianglePlan.Waypoints
+    .GroupBy(w => Math.Round(w.X, 3))
+    .Select(g => g.Key - g.Max(w => w.Y)) // true boundary (y=x) minus the topmost waypoint's Y
+    .Max();
+Check("GenerateCoveragePlan: coverage columns follow a diagonal edge instead of stopping short in a flat cut",
+    worstEdgeGap <= 3.0);
+
 // A real result (2026-08-14): a small survey polygon (narrower than one line's worth of
 // spacing) produced zero waypoints - the line-position loop ran zero times and there was
 // no fallback. This is that exact scenario reproduced: a 20x20m polygon with the same

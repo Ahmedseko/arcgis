@@ -38,6 +38,33 @@ namespace TreeCounterAddin
             return inside;
         }
 
+        // Same edge-crossing test as PointInPolygon, but returns the actual Y of every
+        // crossing instead of a single in/out boolean - the standard scanline-fill technique.
+        // Sorted, these pair up into exact inside-intervals (crossings[0]-crossings[1] is
+        // inside, crossings[1]-crossings[2] is outside, and so on - holes flip the parity
+        // automatically, same as PointInPolygon). Used so a coverage line's first/last waypoint
+        // lands exactly on the polygon boundary instead of stopping short at whatever point
+        // happens to fall on the fixed waypoint-spacing grid (real report, 2026-08-14: a
+        // diagonal/tapered polygon edge left a visible gap between the flat-cut end of a
+        // coverage column and the actual boundary above it).
+        private static List<double> VerticalLineCrossings(double px, IEnumerable<IReadOnlyList<(double X, double Y)>> rings)
+        {
+            var crossings = new List<double>();
+            foreach (var ring in rings)
+            {
+                int n = ring.Count;
+                for (int i = 0, j = n - 1; i < n; j = i++)
+                {
+                    var (xi, yi) = ring[i];
+                    var (xj, yj) = ring[j];
+                    if ((xi > px) != (xj > px))
+                        crossings.Add((yj - yi) * (px - xi) / (xj - xi) + yi);
+                }
+            }
+            crossings.Sort();
+            return crossings;
+        }
+
         public static (double X, double Y) Rotate(double x, double y, double pivotX, double pivotY, double angleDeg)
         {
             var rad = angleDeg * Math.PI / 180.0;
@@ -94,8 +121,6 @@ namespace TreeCounterAddin
 
             var minX = toLocal.SelectMany(r => r).Min(p => p.X);
             var maxX = toLocal.SelectMany(r => r).Max(p => p.X);
-            var minY = toLocal.SelectMany(r => r).Min(p => p.Y);
-            var maxY = toLocal.SelectMany(r => r).Max(p => p.Y);
 
             // Candidate line X-positions, stepped by lineSpacingM - but a survey area
             // narrower than one line's worth of spacing (a small/oddly-shaped RT plan, a
@@ -114,31 +139,42 @@ namespace TreeCounterAddin
             // along (real case, 2026-08-14: a river-bend notch cutting into a survey polygon).
             // Naively connecting the last point before that gap straight to the first point
             // after it draws a long chord straight through the excluded area - visibly outside
-            // the site on the map.
+            // the site on the map. Each run's own start/end come from the actual polygon
+            // boundary crossings (not the fixed waypoint-spacing grid), so a column follows a
+            // diagonal/tapered edge right up to it instead of stopping short in a flat cut.
             var allRuns = new List<List<(double X, double Y)>>();
             foreach (var x in xs)
             {
-                var ys = new List<double>();
-                for (var y = minY; y <= maxY; y += waypointSpacingM)
-                    ys.Add(y);
-                if (ys.Count == 0)
-                    ys.Add((minY + maxY) / 2.0);
-
-                List<(double X, double Y)> currentRun = null;
-                foreach (var y in ys)
+                var crossings = VerticalLineCrossings(x, toLocal);
+                for (var k = 0; k + 1 < crossings.Count; k += 2)
                 {
-                    if (PointInPolygon(x, y, toLocal))
+                    // A tiny safety inset off the literal boundary - two adjacent lines' runs
+                    // now start right at the edge, so the straight transit leg connecting them
+                    // "cuts the corner" near any vertex where the boundary changes direction
+                    // between those two lines. Landing exactly on the boundary made that chord
+                    // noticeably likely to clip outside (real report, 2026-08-14: 22 legs on
+                    // this polygon); 2m fixes essentially all of it while staying visually
+                    // indistinguishable from following the edge exactly (the previous flat-cut
+                    // gap this whole change fixes was 15-30m, not 2m).
+                    const double edgeInsetM = 2.0;
+                    var span = crossings[k + 1] - crossings[k];
+                    if (span < 1e-6) continue; // degenerate/tangent crossing
+                    var inset = Math.Min(edgeInsetM, span / 2.0 - 1e-6);
+                    var yStart = crossings[k] + inset;
+                    var yEnd = crossings[k + 1] - inset;
+                    if (yEnd - yStart < 1e-6)
+                        yStart = yEnd = (crossings[k] + crossings[k + 1]) / 2.0;
+
+                    var run = new List<(double X, double Y)> { (x, yStart) };
+                    var y = yStart + waypointSpacingM;
+                    while (y < yEnd - 1e-6)
                     {
-                        currentRun ??= new List<(double X, double Y)>();
-                        currentRun.Add((x, y));
+                        run.Add((x, y));
+                        y += waypointSpacingM;
                     }
-                    else if (currentRun != null)
-                    {
-                        allRuns.Add(currentRun);
-                        currentRun = null;
-                    }
+                    run.Add((x, yEnd));
+                    allRuns.Add(run);
                 }
-                if (currentRun != null) allRuns.Add(currentRun);
             }
 
             // Greedily walk to whichever unvisited run's nearer endpoint is physically closest,
