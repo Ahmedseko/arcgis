@@ -113,6 +113,25 @@ namespace TreeCounterAddin
             set => SetProperty(ref _crossHatch, value);
         }
 
+        // For a winding, narrow linear feature (river, road, pipeline corridor) - flies passes
+        // that follow the centerline's own curvature instead of the straight-line grid, which
+        // can't fit a single direction to a shape that bends back on itself (real report,
+        // 2026-08-15: a serpentine river-corridor polygon). Needs a separate centerline layer
+        // since the survey polygon alone doesn't say which way the corridor actually runs.
+        private bool _corridorMode;
+        public bool CorridorMode
+        {
+            get => _corridorMode;
+            set => SetProperty(ref _corridorMode, value);
+        }
+
+        private string _selectedCorridorCenterlineLayer;
+        public string SelectedCorridorCenterlineLayer
+        {
+            get => _selectedCorridorCenterlineLayer;
+            set => SetProperty(ref _selectedCorridorCenterlineLayer, value);
+        }
+
         // Two export formats because no single format actually covers "every DJI drone":
         // Litchi CSV works with the consumer lineup (Mavic 3 Classic, Air/Mini series - the
         // apps for those, DJI Fly, have no waypoint-mission import at all), DJI Pilot 2 KMZ
@@ -201,16 +220,34 @@ namespace TreeCounterAddin
                     return;
                 }
 
+                IReadOnlyList<(double X, double Y)> centerline = null;
+                if (CorridorMode)
+                {
+                    var (line, centerlineError) = await ReadCenterlineAsync();
+                    if (centerlineError != null)
+                    {
+                        FlightMissionStatus = centerlineError;
+                        return;
+                    }
+                    centerline = line;
+                }
+
                 var (plan, error) = await QueuedTask.Run(() =>
                 {
-                    var generated = FlightMissionMath.GenerateCoveragePlan(
-                        outer, holes, FlightAltitudeM, FlightGsdCmPerPx, FlightImageWidthPx, FlightImageHeightPx,
-                        FlightFrontOverlapPct, FlightSideOverlapPct, FlightDirectionDeg, FlightSpeedMs,
-                        MaxFlightMinutesPerBattery, CrossHatch);
-                    if (generated.Waypoints.Count == 0)
+                    var generated = CorridorMode
+                        ? FlightMissionMath.GenerateCorridorPlan(centerline, outer, holes, FlightAltitudeM,
+                            FlightGsdCmPerPx, FlightImageWidthPx, FlightImageHeightPx, FlightFrontOverlapPct,
+                            FlightSideOverlapPct, FlightSpeedMs, MaxFlightMinutesPerBattery)
+                        : FlightMissionMath.GenerateCoveragePlan(outer, holes, FlightAltitudeM, FlightGsdCmPerPx,
+                            FlightImageWidthPx, FlightImageHeightPx, FlightFrontOverlapPct, FlightSideOverlapPct,
+                            FlightDirectionDeg, FlightSpeedMs, MaxFlightMinutesPerBattery, CrossHatch);
+                    if (generated.Waypoints.Count == 0 && !CorridorMode)
                         return (generated, "No waypoints generated. " +
                             FlightMissionMath.DescribeCoverageFailure(outer, FlightGsdCmPerPx, FlightImageWidthPx,
                                 FlightImageHeightPx, FlightFrontOverlapPct, FlightSideOverlapPct, FlightDirectionDeg));
+                    if (generated.Waypoints.Count == 0)
+                        return (generated, "No waypoints generated - the centerline doesn't appear to run " +
+                            "through the survey polygon. Check both layers cover the same area.");
                     return (generated, (string)null);
                 });
 
@@ -353,6 +390,83 @@ namespace TreeCounterAddin
                 var outer = (IReadOnlyList<(double X, double Y)>)rings[0];
                 var holes = rings.Skip(1).Select(r => (IReadOnlyList<(double X, double Y)>)r).ToList();
                 return (outer, holes, poly.SpatialReference, (string)null);
+            });
+        }
+
+        // Corridor Mode's centerline input - same single-feature-selection guard as
+        // ReadSurveyPolygonAsync, for the same reason (a layer with several separate lines has
+        // no single "the" centerline to fly).
+        private async Task<(IReadOnlyList<(double X, double Y)> Centerline, string Error)> ReadCenterlineAsync()
+        {
+            if (MapView.Active == null)
+                return (null, "No active map view. Open a map first.");
+            if (SelectedCorridorCenterlineLayer == null)
+                return (null, "Corridor mode needs a centerline layer - pick one above.");
+
+            var map = MapView.Active.Map;
+            var layer = await QueuedTask.Run(() =>
+                map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
+                    .FirstOrDefault(l => l.Name == SelectedCorridorCenterlineLayer));
+            if (layer == null)
+                return (null, "Centerline layer not found - click Refresh and pick again.");
+
+            return await QueuedTask.Run(() =>
+            {
+                using var featureClass = layer.GetFeatureClass();
+                var selection = layer.GetSelection();
+                Polyline line;
+                if (selection != null && selection.GetCount() > 0)
+                {
+                    if (selection.GetCount() > 1)
+                        return (null, $"{selection.GetCount()} features are selected in " +
+                            $"\"{layer.Name}\" - Corridor Mode follows one centerline at a time. Select " +
+                            "just the one you want and try again.");
+                    using var selCursor = selection.Search();
+                    selCursor.MoveNext();
+                    using var selFeature = (Feature)selCursor.Current;
+                    line = selFeature.GetShape() as Polyline;
+                }
+                else
+                {
+                    var total = featureClass.GetCount();
+                    if (total == 0)
+                        return (null, "No features in the selected centerline layer.");
+                    if (total > 1)
+                        return (null, $"\"{layer.Name}\" has {total} features and none is selected - " +
+                            "Corridor Mode follows one centerline at a time. Select the specific line " +
+                            "on the map and try again.");
+                    using var cursor = featureClass.Search(null, false);
+                    cursor.MoveNext();
+                    using var onlyFeature = (Feature)cursor.Current;
+                    line = onlyFeature.GetShape() as Polyline;
+                }
+
+                if (line == null)
+                    return (null, "Selected centerline feature isn't a line.");
+                if (line.SpatialReference == null || line.SpatialReference.IsGeographic)
+                    return (null, "The centerline layer must be in a projected coordinate system (meters).");
+
+                // Longest part only, if the line has several disconnected pieces - a corridor
+                // centerline should be one continuous path, and picking the longest is a safer
+                // default than silently only using the first part (which could be a stray
+                // fragment shorter than the real corridor).
+                var parts = line.Parts.Select(part =>
+                {
+                    var pts = part.Select(seg => (seg.StartPoint.X, seg.StartPoint.Y)).ToList();
+                    pts.Add((part[^1].EndPoint.X, part[^1].EndPoint.Y));
+                    return pts;
+                }).OrderByDescending(p =>
+                {
+                    double len = 0;
+                    for (var i = 0; i < p.Count - 1; i++)
+                        len += Math.Sqrt(Math.Pow(p[i + 1].Item1 - p[i].Item1, 2) + Math.Pow(p[i + 1].Item2 - p[i].Item2, 2));
+                    return len;
+                }).ToList();
+
+                if (parts.Count == 0 || parts[0].Count < 2)
+                    return (null, "Selected centerline has no usable path.");
+
+                return ((IReadOnlyList<(double X, double Y)>)parts[0], (string)null);
             });
         }
 

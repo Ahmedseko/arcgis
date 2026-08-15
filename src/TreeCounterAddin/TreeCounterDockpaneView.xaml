@@ -95,6 +95,7 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <!-- ToolTip on both the label and the box (same bilingual lookup, see
                                          BilingualTooltipConverter.cs) - hover either to see it, and it
@@ -150,7 +151,15 @@
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Battery}"/>
                                     <CheckBox Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Content="Cross-hatch (fly a second pass at 90°, for better 3D reconstruction)"
                                               IsChecked="{Binding CrossHatch}" Margin="0,4,0,2"/>
+                                    <CheckBox Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Content="Corridor mode (follow a centerline instead of a straight-line grid)"
+                                              IsChecked="{Binding CorridorMode}" Margin="0,2,0,2"
+                                              ToolTip="For a winding, narrow feature (river, road, pipeline) - flies passes that follow the centerline's own curvature instead of one fixed direction, which can't fit a shape that bends back on itself."/>
                                 </Grid>
+
+                                <StackPanel Visibility="{Binding CorridorMode, Converter={StaticResource BoolToVis}}" Margin="0,0,0,8">
+                                    <TextBlock Text="Centerline layer" Style="{StaticResource FieldLabel}"/>
+                                    <ComboBox ItemsSource="{Binding PolylineLayers}" SelectedItem="{Binding SelectedCorridorCenterlineLayer}"/>
+                                </StackPanel>
 
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="Generate Mission" Command="{Binding GenerateMissionCommand}" Style="{StaticResource ActionButton}"/>

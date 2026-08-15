@@ -73,10 +73,16 @@ namespace TreeCounterAddin
             settings inside the app before actually flying. If the default direction (0, N-S
             lines) chops an elongated/irregular site into many short zigzag columns instead
             of a few long clean passes, click Suggest next to Flight direction - it analyzes
-            the polygon's own shape and fills in the bearing that needs the fewest lines.
-            One thing this doesn't do yet: altitude/GSD are independent settings you enter
-            yourself rather than one being computed from the other via your camera's focal
-            length - keep them consistent with your drone's actual capture settings.
+            the polygon's own shape and fills in the bearing that needs the fewest lines. For
+            a winding, narrow feature (a river, road, or pipeline corridor) that bends back on
+            itself - where no single fixed direction fits well - check Corridor mode and pick
+            a centerline layer (a digitized line down the middle of the feature); passes then
+            follow the centerline's own curvature instead. Cross-hatch flies a second pass at
+            90 deg from the main direction, appended as further mission parts - better 3D
+            reconstruction of vertical features (building facades, etc.) at roughly double the
+            flight time. One thing this doesn't do yet: altitude/GSD are independent settings
+            you enter yourself rather than one being computed from the other via your camera's
+            focal length - keep them consistent with your drone's actual capture settings.
 
             Fishnet Generator
             Splits a planning/concession polygon into a grid of equal-sized cells, for
@@ -304,10 +310,16 @@ namespace TreeCounterAddin
             memanjang/tidak beraturan jadi banyak kolom zig-zag pendek alih-alih beberapa
             garis panjang yang bersih, klik Suggest di sebelah Flight direction - ini
             menganalisis bentuk poligon dan mengisi otomatis sudut yang butuh garis paling
-            sedikit. Satu hal yang belum bisa dilakukan: altitude/GSD itu pengaturan
-            independen yang Anda isi sendiri, bukan salah satunya dihitung otomatis dari
-            yang lain lewat focal length kamera - pastikan konsisten dengan pengaturan
-            capture drone Anda yang sebenarnya.
+            sedikit. Untuk objek berkelok dan sempit (sungai, jalan, koridor pipa) yang
+            membelok balik - di mana satu arah tetap tidak akan pas - centang Corridor mode
+            dan pilih layer garis tengah (centerline yang sudah didigit di tengah objek
+            tersebut); jalur terbang akan mengikuti lekukan centerline itu sendiri. Cross-
+            hatch menerbangkan pass kedua di 90° dari arah utama, ditambahkan sebagai mission
+            part lanjutan - rekonstruksi 3D lebih baik untuk objek vertikal (fasad bangunan,
+            dll) dengan konsekuensi waktu terbang kira-kira dua kali lipat. Satu hal yang
+            belum bisa dilakukan: altitude/GSD itu pengaturan independen yang Anda isi
+            sendiri, bukan salah satunya dihitung otomatis dari yang lain lewat focal length
+            kamera - pastikan konsisten dengan pengaturan capture drone Anda yang sebenarnya.
 
             Fishnet Generator
             Membagi poligon rencana/konsesi menjadi grid sel berukuran sama, untuk menata

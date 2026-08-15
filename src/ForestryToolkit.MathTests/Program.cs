@@ -207,6 +207,28 @@ Check("GenerateCoveragePlan: cross-hatch roughly doubles the waypoint count",
 Check("GenerateCoveragePlan: cross-hatch's second pass parts continue the numbering, not restart at 1",
     crossHatchPlan.Waypoints.Any(w => w.MissionPart == plan.MissionPartCount + 1));
 
+// --- FlightMissionMath.GenerateCorridorPlan ---
+// Real report (2026-08-15): a serpentine river-corridor polygon exposed that a single global
+// flight direction (however well-optimized) can't fit a shape that bends back on itself. This
+// is a simpler L-shaped corridor (a 90deg bend, not a full serpentine, but the same "direction
+// changes along the length" property) - a 40m-wide corridor around a centerline going
+// (0,0)->(0,100)->(100,100), hand-built as an L-shaped polygon rather than a real buffer.
+var corridorCenterline = new List<(double X, double Y)> { (0, 0), (0, 100), (100, 100) };
+var corridorPolygon = new List<(double X, double Y)>
+{
+    (-20, 0), (-20, 120), (100, 120), (100, 80), (20, 80), (20, 0),
+};
+var corridorPlan = FlightMissionMath.GenerateCorridorPlan(
+    corridorCenterline, corridorPolygon, new List<IReadOnlyList<(double X, double Y)>>(),
+    altitudeM: 50, gsdCmPerPx: 2, imageWidthPx: 1000, imageHeightPx: 1000,
+    frontOverlapPct: 50, sideOverlapPct: 50, speedMs: 8, maxFlightMinutesPerBattery: 20);
+Check("GenerateCorridorPlan: produces waypoints for an L-shaped corridor",
+    corridorPlan.Waypoints.Count > 0);
+Check("GenerateCorridorPlan: keeps every leg inside the corridor polygon despite the 90deg bend",
+    corridorPlan.OffPolygonLegCount == 0);
+Check("GenerateCorridorPlan: covers both arms of the corridor, not just the start",
+    corridorPlan.Waypoints.Any(w => w.Y < 20) && corridorPlan.Waypoints.Any(w => w.X > 80));
+
 // --- WpmlBuilder.BuildTemplateKml ---
 // Real-world risk here isn't a math bug, it's a malformed/incomplete XML that DJI Pilot 2
 // silently rejects - the one check worth having is "does this actually parse, and does it

@@ -112,6 +112,7 @@ namespace TreeCounterAddin
         public ObservableCollection<string> PolygonLayers { get; } = new();
         public ObservableCollection<string> PointLayers { get; } = new();
         public ObservableCollection<string> GpxLayers { get; } = new();
+        public ObservableCollection<string> PolylineLayers { get; } = new();
 
         public ICommand RefreshLayersCommand => new RelayCommand(async () => await RefreshRasterLayersAsync(), () => !IsRunning);
 
@@ -204,6 +205,12 @@ namespace TreeCounterAddin
                     SelectedGpxLayer = GpxLayers.FirstOrDefault();
                 if (SelectedRiverLayer == null || !GpxLayers.Contains(SelectedRiverLayer))
                     SelectedRiverLayer = GpxLayers.FirstOrDefault();
+
+                PolylineLayers.Clear();
+                foreach (var name in polylineNames)
+                    PolylineLayers.Add(name);
+                if (SelectedCorridorCenterlineLayer == null || !PolylineLayers.Contains(SelectedCorridorCenterlineLayer))
+                    SelectedCorridorCenterlineLayer = PolylineLayers.FirstOrDefault();
 
                 if (SelectedDemLayer == null || !RasterLayers.Contains(SelectedDemLayer))
                     SelectedDemLayer = RasterLayers.FirstOrDefault();

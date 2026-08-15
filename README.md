@@ -162,9 +162,16 @@ produced it) - add if the log alone isn't enough.
   coverage lines) - the default 0deg cuts an elongated/irregular site into
   many short, unevenly-lengthed zigzag columns with steep diagonal jumps
   between them (real case: a 2844x804m site needed ~47 lines at 0deg vs. ~13
-  at the suggested ~92deg). Altitude/GSD are still independent inputs (this
-  doesn't derive one from the other via camera focal length - keep them
-  consistent with your drone's actual capture settings yourself). Every
+  at the suggested ~92deg). **Corridor mode** covers a winding, narrow linear
+  feature (river/road/pipeline) that no single fixed direction fits well -
+  pick a centerline layer and passes follow its own curvature instead
+  (`FlightMissionMath.GenerateCorridorPlan`, lanes found adaptively outward
+  from the centerline until both sides come up empty, tangent smoothed over
+  a window so a sharp bend doesn't cut the corner). **Cross-hatch** flies a
+  second pass at +90deg as further mission parts, for better 3D
+  reconstruction of vertical features. Altitude/GSD are still independent
+  inputs (this doesn't derive one from the other via camera focal length -
+  keep them consistent with your drone's actual capture settings yourself). Every
   parameter field has a hover tooltip explaining
   it (`BilingualTooltipConverter.cs`) - reuses the same English/Indonesian
   flag the Help tab exposes rather than adding a second language switch

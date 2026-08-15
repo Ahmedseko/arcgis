@@ -209,15 +209,32 @@ namespace TreeCounterAddin
                 }
             }
 
-            // Greedily walk to whichever unvisited run's nearer endpoint is physically closest,
-            // rather than a rigid "line order, then line's-2nd-run order" traversal - a fixed
-            // rule like that can still connect two runs that are far apart just because the rule
-            // said to next (real reports, 2026-08-14: a short run left stranded and reached via
-            // a long out-of-sequence jump at one direction, a leg cutting straight outside the
-            // polygon at another). Nearest-neighbor isn't a guaranteed fix for every possible
-            // concave shape, but it resolved every case seen so far in testing against the real
-            // polygon that exposed this - any leftover risk is still caught by the
-            // OffPolygonLegCount check below instead of staying silent about it.
+            var (orderedLocal, offPolygonLegCount) = OrderRuns(allRuns, toLocal);
+            var orderedWorld = orderedLocal.Select(p => Rotate(p.X, p.Y, pivotX, pivotY, flightDirectionDeg)).ToList();
+            var (waypoints, missionPartCount, totalDistanceM, totalMinutes) =
+                SplitIntoMissionParts(orderedWorld, altitudeM, speedMs, maxFlightMinutesPerBattery);
+            return new Plan(waypoints, missionPartCount, totalDistanceM, totalMinutes, offPolygonLegCount);
+        }
+
+        // Shared by GenerateSinglePassPlan and GenerateCorridorPlan - orders a set of already-
+        // computed coverage runs into one flight sequence. Greedily walks to whichever unvisited
+        // run's nearer endpoint is physically closest, rather than a rigid "line order, then
+        // line's-2nd-run order" traversal - a fixed rule like that can still connect two runs
+        // that are far apart just because the rule said to next (real reports, 2026-08-14: a
+        // short run left stranded and reached via a long out-of-sequence jump at one direction,
+        // a leg cutting straight outside the polygon at another). A single nearest-neighbor
+        // construction can still land on a tour with one unlucky long detour purely from where
+        // it happened to start, so this tries every possible starting run (and direction) and
+        // keeps whichever tour has the fewest off-polygon legs, then the shortest worst-case
+        // transit - cheap (O(runs^3), trivial for anything short of hundreds of lines) and
+        // consistently finds a materially better tour (verified against the real river-bend-
+        // notch polygon). Not a guaranteed fix for every possible concave shape, so the returned
+        // OffPolygonLegCount is a leftover-risk count to surface to the user, not silently drop.
+        private static (List<(double X, double Y)> Waypoints, int OffPolygonLegCount) OrderRuns(
+            List<List<(double X, double Y)>> allRuns, List<IReadOnlyList<(double X, double Y)>> rings)
+        {
+            if (allRuns.Count == 0) return (new List<(double X, double Y)>(), 0);
+
             List<(double X, double Y)> BuildTour(int startIndex, bool reverseStart)
             {
                 var remaining = new List<List<(double X, double Y)>>(allRuns);
@@ -262,7 +279,7 @@ namespace TreeCounterAddin
                 {
                     var (x1, y1) = tour[i];
                     var (x2, y2) = tour[i + 1];
-                    if (!PointInPolygon((x1 + x2) / 2.0, (y1 + y2) / 2.0, toLocal))
+                    if (!PointInPolygon((x1 + x2) / 2.0, (y1 + y2) / 2.0, rings))
                         offCount++;
                     var d = Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
                     if (d > maxTurn) maxTurn = d;
@@ -270,63 +287,41 @@ namespace TreeCounterAddin
                 return (offCount, maxTurn);
             }
 
-            var orderedWaypoints = new List<(double X, double Y)>();
-            if (allRuns.Count > 0)
+            var startCandidates = allRuns.Count <= 60 ? allRuns.Count : 1;
+            List<(double X, double Y)> bestTour = null;
+            var bestScore = (OffPolygonCount: int.MaxValue, MaxTurnM: double.MaxValue);
+            for (var startIndex = 0; startIndex < startCandidates; startIndex++)
             {
-                // A single nearest-neighbor construction can land on a tour with one unlucky
-                // long detour purely from where it happened to start - trying every possible
-                // starting run (and direction) and keeping whichever tour has the fewest
-                // off-polygon legs, then the shortest worst-case transit, is cheap (O(runs^3),
-                // trivial for anything short of hundreds of lines) and consistently finds a
-                // materially better tour (verified against the real river-bend-notch polygon:
-                // eliminated the one remaining off-polygon leg at a specific angle, with no
-                // regression at any other angle tested). Capped so a very detailed mission
-                // (100+ lines) can't turn a button click into a multi-second wait.
-                var startCandidates = allRuns.Count <= 60 ? allRuns.Count : 1;
-                List<(double X, double Y)> bestTour = null;
-                var bestScore = (OffPolygonCount: int.MaxValue, MaxTurnM: double.MaxValue);
-                for (var startIndex = 0; startIndex < startCandidates; startIndex++)
+                foreach (var reverseStart in new[] { false, true })
                 {
-                    foreach (var reverseStart in new[] { false, true })
+                    var tour = BuildTour(startIndex, reverseStart);
+                    var score = ScoreTour(tour);
+                    if (score.OffPolygonCount < bestScore.OffPolygonCount ||
+                        (score.OffPolygonCount == bestScore.OffPolygonCount && score.MaxTurnM < bestScore.MaxTurnM))
                     {
-                        var tour = BuildTour(startIndex, reverseStart);
-                        var score = ScoreTour(tour);
-                        if (score.OffPolygonCount < bestScore.OffPolygonCount ||
-                            (score.OffPolygonCount == bestScore.OffPolygonCount && score.MaxTurnM < bestScore.MaxTurnM))
-                        {
-                            bestScore = score;
-                            bestTour = tour;
-                        }
+                        bestScore = score;
+                        bestTour = tour;
                     }
                 }
-                orderedWaypoints = bestTour;
             }
 
-            // Splitting each line into contiguous runs (above) fixes the common case, but a
-            // transit leg landing exactly on a run that sits at the edge of the sweep range can
-            // still connect two points whose straight-line midpoint falls outside the polygon
-            // (real case, 2026-08-14: a river-bend notch in a survey polygon) - full obstacle-
-            // aware routing is out of scope here, so this just counts how often it still happens
-            // and reports it rather than staying silent about a flight path that visibly leaves
-            // the survey area on the map.
-            var offPolygonLegCount = 0;
-            for (var i = 0; i < orderedWaypoints.Count - 1; i++)
-            {
-                var (x1, y1) = orderedWaypoints[i];
-                var (x2, y2) = orderedWaypoints[i + 1];
-                if (!PointInPolygon((x1 + x2) / 2.0, (y1 + y2) / 2.0, toLocal))
-                    offPolygonLegCount++;
-            }
+            return (bestTour, bestScore.OffPolygonCount);
+        }
 
-            // Un-rotate back to real-world coordinates, then split into battery-sized parts by
-            // walking the ordered sequence and cutting whenever the *current part's own*
-            // accumulated flight time would exceed the budget (each part is treated as its own
-            // fresh battery/launch, not a continuous flight - the transit between where one part
-            // ends and the next begins is on the operator to reposition for). The cut point is
-            // repeated as a seam waypoint - the closing waypoint of the part that's ending *and*
-            // the opening waypoint of the next one - so the two parts share an exact coordinate
-            // instead of each just picking up wherever the sequence happened to land; the next
-            // battery's takeoff lines up exactly with where the previous one left off.
+        // Shared by GenerateSinglePassPlan and GenerateCorridorPlan - walks an already-ordered,
+        // real-world-coordinate waypoint sequence and cuts it into battery-sized mission parts
+        // whenever adding the next leg would push the *current part's own* accumulated flight
+        // time over budget (each part is treated as its own fresh battery/launch, not a
+        // continuous flight - the transit between where one part ends and the next begins is on
+        // the operator to reposition for). The cut point is repeated as a seam waypoint - the
+        // closing waypoint of the part that's ending *and* the opening waypoint of the next one -
+        // so the two parts share an exact coordinate instead of each just picking up wherever the
+        // sequence happened to land; the next battery's takeoff lines up exactly with where the
+        // previous one left off.
+        private static (List<Waypoint> Waypoints, int MissionPartCount, double TotalDistanceM, double TotalMinutes)
+            SplitIntoMissionParts(List<(double X, double Y)> orderedPoints, double altitudeM, double speedMs,
+                double maxFlightMinutesPerBattery)
+        {
             var waypoints = new List<Waypoint>();
             var missionPart = 1;
             var sequence = 0;
@@ -335,17 +330,16 @@ namespace TreeCounterAddin
             (double X, double Y)? prev = null;
             var budgetSeconds = maxFlightMinutesPerBattery * 60.0;
 
-            foreach (var local in orderedWaypoints)
+            foreach (var point in orderedPoints)
             {
-                var (worldX, worldY) = Rotate(local.X, local.Y, pivotX, pivotY, flightDirectionDeg);
                 if (prev is { } p)
                 {
-                    var legDistance = Math.Sqrt(Math.Pow(worldX - p.X, 2) + Math.Pow(worldY - p.Y, 2));
+                    var legDistance = Math.Sqrt(Math.Pow(point.X - p.X, 2) + Math.Pow(point.Y - p.Y, 2));
                     var legSeconds = speedMs > 0 ? legDistance / speedMs : 0;
                     if (partSeconds + legSeconds > budgetSeconds && waypoints.Count > 0 &&
                         waypoints[^1].MissionPart == missionPart)
                     {
-                        waypoints.Add(new Waypoint(worldX, worldY, altitudeM, missionPart, sequence++));
+                        waypoints.Add(new Waypoint(point.X, point.Y, altitudeM, missionPart, sequence++));
                         missionPart++;
                         sequence = 0;
                         partSeconds = 0;
@@ -356,13 +350,152 @@ namespace TreeCounterAddin
                     }
                     totalDistanceM += legDistance;
                 }
-                waypoints.Add(new Waypoint(worldX, worldY, altitudeM, missionPart, sequence++));
-                prev = (worldX, worldY);
+                waypoints.Add(new Waypoint(point.X, point.Y, altitudeM, missionPart, sequence++));
+                prev = (point.X, point.Y);
             }
 
             var totalMinutes = speedMs > 0 ? totalDistanceM / speedMs / 60.0 : 0;
-            return new Plan(waypoints, waypoints.Count == 0 ? 0 : missionPart, totalDistanceM, totalMinutes,
-                offPolygonLegCount);
+            return (waypoints, waypoints.Count == 0 ? 0 : missionPart, totalDistanceM, totalMinutes);
+        }
+
+        /// <summary>
+        /// Generates a coverage flight plan for a winding, narrow linear feature (river, road,
+        /// pipeline corridor) by flying parallel passes that each follow the given centerline's
+        /// own curvature, offset sideways lane by lane - instead of the straight-line grid
+        /// GenerateCoveragePlan uses, which can't fit a single global direction to a shape that
+        /// bends back on itself (real report, 2026-08-15: a serpentine river-corridor polygon
+        /// where even the best single direction still left one flagged leg). Lanes are found
+        /// adaptively (keep adding lanes outward from the centerline until a full round on both
+        /// sides comes up empty) instead of computing the corridor's width up front, so it
+        /// naturally handles a width that varies along the corridor's length.
+        /// </summary>
+        /// <param name="centerline">The corridor's centerline, in order - e.g. a digitized river
+        /// or road centerline. Densified internally at the along-track waypoint spacing.</param>
+        /// <param name="outerRing">The actual survey/coverage boundary (a buffer around the
+        /// centerline, or a hand-digitized corridor outline) - lanes are clipped to this, same
+        /// as GenerateCoveragePlan's polygon.</param>
+        public static Plan GenerateCorridorPlan(
+            IReadOnlyList<(double X, double Y)> centerline,
+            IReadOnlyList<(double X, double Y)> outerRing,
+            IReadOnlyList<IReadOnlyList<(double X, double Y)>> holes,
+            double altitudeM, double gsdCmPerPx, int imageWidthPx, int imageHeightPx,
+            double frontOverlapPct, double sideOverlapPct,
+            double speedMs, double maxFlightMinutesPerBattery)
+        {
+            var gsdM = gsdCmPerPx / 100.0;
+            var lineSpacingM = LineSpacingM(gsdCmPerPx, imageWidthPx, sideOverlapPct);
+            var waypointSpacingM = Math.Max(0.5, gsdM * imageHeightPx * (1 - Math.Min(frontOverlapPct, 95) / 100.0));
+
+            var allRings = new List<IReadOnlyList<(double X, double Y)>> { outerRing };
+            allRings.AddRange(holes);
+
+            var samples = ResampleCenterline(centerline, waypointSpacingM);
+            if (samples.Count == 0)
+                return new Plan(new List<Waypoint>(), 0, 0, 0);
+
+            // One lane's worth of runs at a given perpendicular offset from the centerline -
+            // split into contiguous in-polygon runs for the same reason GenerateSinglePassPlan
+            // does: the corridor's width can pinch to nothing and widen again partway along its
+            // length, and naively connecting across that gap would draw a chord through the
+            // excluded area.
+            List<List<(double X, double Y)>> LaneRuns(double offset)
+            {
+                var runs = new List<List<(double X, double Y)>>();
+                List<(double X, double Y)> current = null;
+                foreach (var (point, tangent) in samples)
+                {
+                    // Perpendicular to the tangent, rotated 90 deg: (dx,dy) -> (-dy,dx).
+                    var px = point.X - tangent.Dy * offset;
+                    var py = point.Y + tangent.Dx * offset;
+                    if (PointInPolygon(px, py, allRings))
+                    {
+                        current ??= new List<(double X, double Y)>();
+                        current.Add((px, py));
+                    }
+                    else if (current != null)
+                    {
+                        runs.Add(current);
+                        current = null;
+                    }
+                }
+                if (current != null) runs.Add(current);
+                return runs;
+            }
+
+            var allRuns = new List<List<(double X, double Y)>>();
+            allRuns.AddRange(LaneRuns(0)); // the centerline lane itself
+            for (var lane = 1; lane <= 500; lane++) // hard cap against a runaway loop on bad input
+            {
+                var positive = LaneRuns(lane * lineSpacingM);
+                var negative = LaneRuns(-lane * lineSpacingM);
+                if (positive.Count == 0 && negative.Count == 0) break; // both sides empty - corridor's full width is covered
+                allRuns.AddRange(positive);
+                allRuns.AddRange(negative);
+            }
+
+            var (orderedPoints, offPolygonLegCount) = OrderRuns(allRuns, allRings);
+            var (waypoints, missionPartCount, totalDistanceM, totalMinutes) =
+                SplitIntoMissionParts(orderedPoints, altitudeM, speedMs, maxFlightMinutesPerBattery);
+            return new Plan(waypoints, missionPartCount, totalDistanceM, totalMinutes, offPolygonLegCount);
+        }
+
+        // Walks the centerline at fixed arc-length steps, interpolating both the point and the
+        // local (unit) tangent direction at each step - the tangent is what lets each lane's
+        // offset follow the centerline's own curvature instead of a single global direction.
+        private static List<((double X, double Y) Point, (double Dx, double Dy) Tangent)> ResampleCenterline(
+            IReadOnlyList<(double X, double Y)> centerline, double stepM)
+        {
+            var points = new List<(double X, double Y)>();
+            if (centerline.Count < 2)
+                return new List<((double X, double Y), (double, double))>();
+
+            var segLengths = new List<double>();
+            double total = 0;
+            for (var i = 0; i < centerline.Count - 1; i++)
+            {
+                var d = Math.Sqrt(Math.Pow(centerline[i + 1].X - centerline[i].X, 2) +
+                                   Math.Pow(centerline[i + 1].Y - centerline[i].Y, 2));
+                segLengths.Add(d);
+                total += d;
+            }
+            if (total < 1e-6)
+                return new List<((double X, double Y), (double, double))>();
+
+            for (var dist = 0.0; dist <= total; dist += stepM)
+            {
+                var acc = 0.0;
+                var segIdx = 0;
+                while (segIdx < segLengths.Count - 1 && acc + segLengths[segIdx] < dist)
+                {
+                    acc += segLengths[segIdx];
+                    segIdx++;
+                }
+                var segLen = segLengths[segIdx];
+                var t = segLen > 1e-6 ? (dist - acc) / segLen : 0;
+                var p0 = centerline[segIdx];
+                var p1 = centerline[segIdx + 1];
+                points.Add((p0.X + (p1.X - p0.X) * t, p0.Y + (p1.Y - p0.Y) * t));
+            }
+
+            // Tangent from a few samples behind to a few samples ahead, not the raw
+            // segment-to-segment direction - a real centerline vertex (a river bend, a road
+            // corner) makes the raw direction jump discontinuously right at that point, which
+            // makes each lane's sideways offset cut across the corridor's corner instead of
+            // curving through it (real test, 2026-08-15: an L-shaped 90deg-bend corridor).
+            // Averaging over a window smooths that jump into a gradual turn.
+            const int window = 3;
+            var result = new List<((double X, double Y), (double, double))>();
+            for (var i = 0; i < points.Count; i++)
+            {
+                var behind = points[Math.Max(0, i - window)];
+                var ahead = points[Math.Min(points.Count - 1, i + window)];
+                var dx = ahead.X - behind.X;
+                var dy = ahead.Y - behind.Y;
+                var len = Math.Sqrt(dx * dx + dy * dy);
+                if (len > 1e-6) { dx /= len; dy /= len; } else { dx = 1; dy = 0; }
+                result.Add((points[i], (dx, dy)));
+            }
+            return result;
         }
 
         // Shared by GenerateCoveragePlan, DescribeCoverageFailure and SuggestDirection - how far
