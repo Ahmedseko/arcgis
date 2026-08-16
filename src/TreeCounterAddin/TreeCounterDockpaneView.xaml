@@ -399,6 +399,10 @@
                                 <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedColorSamplerRasterLayer}" Margin="0,0,0,8"/>
 
+                                <TextBlock Text="Category (tagged on every click until changed)" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding SampleCategories}" Text="{Binding SelectedSampleCategory, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEditable="True" Margin="0,0,0,8"/>
+
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="Start Sampling" Command="{Binding StartColorSamplingCommand}" Style="{StaticResource ActionButton}"/>
                                     <Button Content="Stop Sampling" Command="{Binding StopColorSamplingCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"

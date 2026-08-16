@@ -16,9 +16,11 @@ Called by TreeCounterAddin/PythonBackendService.cs as:
     python save_color_samples.py --reference-raster <path> --output-fc <fc path> \
         --samples-json <path> --summary <path>
 
---samples-json: [{"x": .., "y": .., "r": .., "g": .., "b": .., "exg": ..}, ...] - x/y already
-in the same spatial reference as --reference-raster (the map view's own SR at click time,
-which is what this add-in's other detection results are already created in too).
+--samples-json: [{"x": .., "y": .., "r": .., "g": .., "b": .., "exg": .., "cls": ..}, ...] -
+x/y already in the same spatial reference as --reference-raster (the map view's own SR at
+click time, which is what this add-in's other detection results are already created in
+too). "cls" is the user's currently-selected sample category (see SampleCategories in
+TreeCounterDockpaneViewModel.ColorSampler.cs) - may be "" for older/uncategorized samples.
 
 Writes --summary: {"output_fc": str, "count": int}
 """
@@ -56,7 +58,7 @@ def main() -> int:
         fields = ["SHAPE@XY", "Label", "Class", "R", "G", "B", "ExG"]
         with arcpy.da.InsertCursor(args.output_fc, fields) as cursor:
             for s in samples:
-                cursor.insertRow(((s["x"], s["y"]), "", "", s["r"], s["g"], s["b"], s["exg"]))
+                cursor.insertRow(((s["x"], s["y"]), "", s.get("cls", ""), s["r"], s["g"], s["b"], s["exg"]))
         count = len(samples)
     except Exception as exc:
         print(str(exc), file=sys.stderr)

@@ -36,7 +36,7 @@ namespace TreeCounterAddin
     internal record CompareChangesResult(
         bool Success, int LostCount, int NewCount, int MatchedCount, string LostFc, string NewFc, string ErrorMessage);
 
-    internal record ColorSample(double X, double Y, int R, int G, int B, double ExG);
+    internal record ColorSample(double X, double Y, int R, int G, int B, double ExG, string Category = "");
 
     internal record SaveColorSamplesResult(bool Success, string OutputFc, int Count, string ErrorMessage);
 
@@ -450,7 +450,7 @@ namespace TreeCounterAddin
             var summaryPath = Path.Combine(Path.GetTempPath(), $"color_samples_summary_{Guid.NewGuid():N}.json");
 
             await File.WriteAllTextAsync(samplesJsonPath, JsonSerializer.Serialize(samples.Select(s =>
-                new { x = s.X, y = s.Y, r = s.R, g = s.G, b = s.B, exg = s.ExG })), cancellationToken);
+                new { x = s.X, y = s.Y, r = s.R, g = s.G, b = s.B, exg = s.ExG, cls = s.Category })), cancellationToken);
 
             var psi = new ProcessStartInfo
             {

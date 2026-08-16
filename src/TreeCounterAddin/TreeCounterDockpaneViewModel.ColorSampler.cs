@@ -5,6 +5,7 @@ using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -63,6 +64,33 @@ namespace TreeCounterAddin
             set => SetProperty(ref _colorSamplerStatus, value);
         }
 
+        // "Sticky" category - stays selected across clicks so a cluster of same-class
+        // points (e.g. walking along a forest edge) doesn't need re-picking per click;
+        // switch it, then keep clicking for the next class. ComboBox is editable (see
+        // XAML) so a category outside this preset list can still be typed - the fc's own
+        // Class field stays plain free text either way (2026-08-16 decision), this list is
+        // just a fast-entry aid, not a hard constraint.
+        public ObservableCollection<string> SampleCategories { get; } = new()
+        {
+            "Hutan/kanopi rapat",
+            "Vegetasi rendah/regrowth",
+            "Bukaan/tanah terbuka",
+            "Serpihan tebangan/kayu",
+            "Jalan/jalur",
+            "Sungai/air",
+            "Bayangan",
+            "Alat berat/kendaraan",
+            "Bangunan/atap",
+            "Lainnya/tidak yakin",
+        };
+
+        private string _selectedSampleCategory = "Hutan/kanopi rapat";
+        public string SelectedSampleCategory
+        {
+            get => _selectedSampleCategory;
+            set => SetProperty(ref _selectedSampleCategory, value);
+        }
+
         private readonly List<ColorSample> _pendingColorSamples = new();
         private Process _pixelSampleWorker;
         private string _colorSamplerRasterPath;
@@ -94,7 +122,7 @@ namespace TreeCounterAddin
 
                 await FrameworkApplication.SetCurrentToolAsync("TreeCounterAddin_ColorSamplerTool");
                 IsColorSampling = true;
-                ColorSamplerStatus = "Sampling active - click on the raster to add points. 0 sample(s) so far.";
+                ColorSamplerStatus = $"Sampling active - category '{SelectedSampleCategory}' - click on the raster to add points. 0 sample(s) so far.";
             }
             catch (Exception ex)
             {
@@ -179,11 +207,14 @@ namespace TreeCounterAddin
         }
 
         // Buffers in memory only, no I/O - keeps AddColorSample itself instant regardless
-        // of how the RGB was obtained.
+        // of how the RGB was obtained. Tags every sample with whatever category is
+        // currently selected (see SelectedSampleCategory) rather than requiring a per-click
+        // prompt - a real report (2026-08-16) noted samples are otherwise impossible to
+        // remember/relabel accurately after the fact.
         internal void AddColorSample(double mapX, double mapY, int r, int g, int b, double exgValue)
         {
-            _pendingColorSamples.Add(new ColorSample(mapX, mapY, r, g, b, exgValue));
-            ColorSamplerStatus = $"Sampling active - {_pendingColorSamples.Count} sample(s) so far. " +
+            _pendingColorSamples.Add(new ColorSample(mapX, mapY, r, g, b, exgValue, SelectedSampleCategory ?? ""));
+            ColorSamplerStatus = $"Sampling active - category '{SelectedSampleCategory}' - {_pendingColorSamples.Count} sample(s) so far. " +
                 $"Last: RGB({r},{g},{b}), ExG {(exgValue >= 0 ? "+" : "")}{exgValue:F0}.";
         }
 
