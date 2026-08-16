@@ -13,7 +13,7 @@ namespace TreeCounterAddin
         int Sigma, double ExgThreshold, double MinSmooth, bool ExcludeClearedLand = false,
         string Provider = null, string ApiKey = null, string Model = null);
 
-    internal record DetectionResult(bool Success, bool Cancelled, int TreeCount, string OutputFc, string ErrorMessage, double AreaHa = 0, int FilteredClearedCount = 0);
+    internal record DetectionResult(bool Success, bool Cancelled, int TreeCount, string OutputFc, string ErrorMessage, double AreaHa = 0, int FilteredClearedCount = 0, int RejectedByAiCount = 0);
 
     internal record LandClearingRequest(
         string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinAreaM2, string ExcludeFc = null,
@@ -145,7 +145,8 @@ namespace TreeCounterAddin
                     root.GetProperty("output_fc").GetString(),
                     null,
                     root.GetProperty("area_ha").GetDouble(),
-                    root.TryGetProperty("filtered_cleared_count", out var fc) ? fc.GetInt32() : 0);
+                    root.TryGetProperty("filtered_cleared_count", out var fc) ? fc.GetInt32() : 0,
+                    root.TryGetProperty("rejected_by_ai_count", out var rc) ? rc.GetInt32() : 0);
             }
             catch (Exception ex)
             {

@@ -16,7 +16,8 @@ Called by TreeCounterAddin/PythonBackendService.cs as:
 
 Writes the detected points to --output-fc (created fresh, same spatial
 reference as --raster) and a JSON summary to --summary:
-    {"tree_count": int, "output_fc": str, "area_ha": float, "filtered_cleared_count": int}
+    {"tree_count": int, "output_fc": str, "area_ha": float, "filtered_cleared_count": int,
+     "rejected_by_ai_count": int}
 
 --exclude-cleared reuses land_clearing.build_cleared_mask (see that module) to drop any
 candidate whose pixel falls on cleared/bare ground - added after visual validation
@@ -149,6 +150,13 @@ def detect(raster_path: str, profile: str, sigma=None, exg_threshold=None,
         trees = [t for t in trees if mask[t['py'], t['px']] == 0]
         filtered_cleared_count = before - len(trees)
 
+    # Reported back up to the caller even when 0, so the UI can show whether AI validation
+    # actually ran at all - a real report (2026-08-16) found there was previously no visible
+    # confirmation of this beyond a STAGE message that flashes by mid-run and gets
+    # overwritten by the final "Done: N trees" status, so an entered API key that silently
+    # failed (bad key, network error - validate_trees fails open on error, keeping all
+    # candidates) looked identical to one that worked.
+    rejected_by_ai_count = 0
     if api_key:
         from raster_io import load_rgb
         from validator import validate_trees
@@ -158,13 +166,14 @@ def detect(raster_path: str, profile: str, sigma=None, exg_threshold=None,
             stage_cb(f"Validating {len(trees)} candidates with {provider.capitalize()} ({model})...")
         rd = load_rgb(raster_path)
         validate_progress = (lambda p: progress_cb(85 + int(p * 0.15))) if progress_cb else None
-        trees, _ = validate_trees(
+        trees, ai_stats = validate_trees(
             rd, trees, api_key, sigma_px=sigma, model=model,
             profile=mode, provider=provider, progress_cb=validate_progress)
+        rejected_by_ai_count = ai_stats['rejected']
 
     if progress_cb:
         progress_cb(100)
-    return trees, mode, filtered_cleared_count
+    return trees, mode, filtered_cleared_count, rejected_by_ai_count
 
 
 def main() -> int:
@@ -187,7 +196,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        trees, _, filtered_cleared_count = detect(
+        trees, _, filtered_cleared_count, rejected_by_ai_count = detect(
             args.raster, args.profile, sigma=args.sigma,
             exg_threshold=args.exg_threshold, min_smooth=args.min_smooth,
             conf_threshold=args.conf_threshold, exclude_cleared_land=args.exclude_cleared,
@@ -209,6 +218,7 @@ def main() -> int:
         json.dump({
             "tree_count": len(trees), "output_fc": output_fc, "area_ha": area_ha,
             "filtered_cleared_count": filtered_cleared_count,
+            "rejected_by_ai_count": rejected_by_ai_count,
         }, f)
     return 0
 

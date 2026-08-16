@@ -219,10 +219,15 @@ namespace TreeCounterAddin
                             SymbolFactory.Instance.ConstructStroke(ColorFactory.Instance.CreateRGBColor(160, 90, 40), 1.5));
                         newLayer.SetRenderer(new CIMSimpleRenderer { Symbol = symbol.MakeSymbolReference() });
                     });
+                    // Same explicit-even-at-zero AI confirmation as Tree Detection - see its
+                    // comment for why (a silently-failed key looks identical to "AI found
+                    // nothing wrong" without this).
+                    var aiNote = string.IsNullOrWhiteSpace(ApiKey) ? ""
+                        : $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)";
                     LandClearingStatus = (result.PolygonCount == 0
                         ? "Done: no cleared/bare areas found above the minimum area."
                         : $"Done: {result.PolygonCount} cleared area(s) found, {result.AreaHa:F2} ha total.") +
-                        (result.RejectedByAiCount > 0 ? $" ({result.RejectedByAiCount} false positive(s) rejected by AI validation.)" : "");
+                        aiNote;
                 }
                 else
                 {

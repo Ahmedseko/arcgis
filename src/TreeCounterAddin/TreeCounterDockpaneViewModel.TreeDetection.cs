@@ -261,8 +261,18 @@ namespace TreeCounterAddin
                     await AddResultLayerAsync(map, result.OutputFc, fcName);
                     LastTreeCount = result.TreeCount;
                     LastAreaHa = result.AreaHa;
+                    // Explicit confirmation that AI Vision Validation actually ran, shown
+                    // even when it rejected nothing - a real report (2026-08-16) found that
+                    // with an API key entered but no visible mention of it in the final
+                    // status, there was no way to tell "it ran and found nothing wrong" apart
+                    // from "it silently never ran" (e.g. a bad key - validate_trees fails
+                    // open on request errors, so a broken key still returns a normal-looking
+                    // result otherwise indistinguishable from success).
+                    var aiNote = string.IsNullOrWhiteSpace(ApiKey) ? ""
+                        : $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)";
                     StatusText = $"Done: {result.TreeCount} trees detected across {result.AreaHa:F1} ha scanned." +
-                        (result.FilteredClearedCount > 0 ? $" ({result.FilteredClearedCount} false positive(s) on cleared ground filtered out.)" : "");
+                        (result.FilteredClearedCount > 0 ? $" ({result.FilteredClearedCount} false positive(s) on cleared ground filtered out.)" : "") +
+                        aiNote;
                 }
                 else
                 {
