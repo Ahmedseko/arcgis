@@ -72,7 +72,7 @@ namespace TreeCounterAddin
                 var b = bandCount > 2 ? Convert.ToInt32(raster.GetPixelValue(2, row, col)) : 0;
                 var exgValue = 2.0 * g - r - b;
 
-                vm.AddColorSample(mapPoint, r, g, b, exgValue);
+                vm.AddColorSample(mapPoint.X, mapPoint.Y, r, g, b, exgValue);
             });
         }
     }

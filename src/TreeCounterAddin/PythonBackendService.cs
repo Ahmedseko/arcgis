@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,6 +36,10 @@ namespace TreeCounterAddin
     internal record CompareChangesResult(
         bool Success, int LostCount, int NewCount, int MatchedCount, string LostFc, string NewFc, string ErrorMessage);
 
+    internal record ColorSample(double X, double Y, int R, int G, int B, double ExG);
+
+    internal record SaveColorSamplesResult(bool Success, string OutputFc, int Count, string ErrorMessage);
+
     // Shells out to the ArcGIS Pro conda python + backend/detect.py (ported ExG matched-filter
     // + YOLOv8n ONNX pipeline from qgis_plugin/tree_counter, plus optional Gemini Vision
     // validation) instead of reimplementing the numpy/scipy-heavy detection math in C#.
@@ -57,6 +63,7 @@ namespace TreeCounterAddin
         private static readonly string DetectRoadsScript = Path.Combine(BackendDir, "detect_roads.py");
         private static readonly string CheckApiKeyScript = Path.Combine(BackendDir, "check_api_key.py");
         private static readonly string CompareDetectionsScript = Path.Combine(BackendDir, "compare_detections.py");
+        private static readonly string SaveColorSamplesScript = Path.Combine(BackendDir, "save_color_samples.py");
 
         public static async Task<DetectionResult> RunDetectionAsync(
             DetectionRequest request, Action<int> onProgress = null, Action<string> onStage = null,
@@ -420,6 +427,72 @@ namespace TreeCounterAddin
             catch (Exception ex)
             {
                 return new CompareChangesResult(false, 0, 0, 0, null, null, ex.Message);
+            }
+        }
+
+        // Shells out to backend/save_color_samples.py - deliberately arcpy-based feature
+        // class creation (same pattern as detect.py's _write_feature_class) rather than
+        // ArcGIS.Core.Data.DDL/SchemaBuilder directly in C#, after that crashed ArcGIS Pro
+        // outright at creation time in testing (real report, 2026-08-16). Called once, when
+        // the user clicks Stop Sampling - not per click, so the samples list is built up
+        // entirely in memory (TreeCounterDockpaneViewModel.ColorSampler.cs) first.
+        public static async Task<SaveColorSamplesResult> SaveColorSamplesAsync(
+            string referenceRasterPath, string outputFc, IReadOnlyList<ColorSample> samples,
+            CancellationToken cancellationToken = default)
+        {
+            var pythonExe = File.Exists(ProPythonExe) ? ProPythonExe : "python";
+            var scriptPath = Path.GetFullPath(SaveColorSamplesScript);
+            if (!File.Exists(scriptPath))
+                return new SaveColorSamplesResult(false, null, 0, $"Script not found: {scriptPath}");
+
+            var samplesJsonPath = Path.Combine(Path.GetTempPath(), $"color_samples_{Guid.NewGuid():N}.json");
+            var summaryPath = Path.Combine(Path.GetTempPath(), $"color_samples_summary_{Guid.NewGuid():N}.json");
+
+            await File.WriteAllTextAsync(samplesJsonPath, JsonSerializer.Serialize(samples.Select(s =>
+                new { x = s.X, y = s.Y, r = s.R, g = s.G, b = s.B, exg = s.ExG })), cancellationToken);
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = pythonExe,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            psi.ArgumentList.Add(scriptPath);
+            psi.ArgumentList.Add("--reference-raster"); psi.ArgumentList.Add(referenceRasterPath);
+            psi.ArgumentList.Add("--output-fc"); psi.ArgumentList.Add(outputFc);
+            psi.ArgumentList.Add("--samples-json"); psi.ArgumentList.Add(samplesJsonPath);
+            psi.ArgumentList.Add("--summary"); psi.ArgumentList.Add(summaryPath);
+
+            try
+            {
+                using var process = new Process { StartInfo = psi };
+                process.Start();
+                var stderr = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode != 0)
+                {
+                    var message = string.IsNullOrWhiteSpace(stderr)
+                        ? $"python.exe exited with code {process.ExitCode} and no error output."
+                        : stderr;
+                    return new SaveColorSamplesResult(false, null, 0, message);
+                }
+
+                var json = await File.ReadAllTextAsync(summaryPath);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                return new SaveColorSamplesResult(true, root.GetProperty("output_fc").GetString(), root.GetProperty("count").GetInt32(), null);
+            }
+            catch (Exception ex)
+            {
+                return new SaveColorSamplesResult(false, null, 0, ex.Message);
+            }
+            finally
+            {
+                try { File.Delete(samplesJsonPath); } catch { /* best effort */ }
+                try { File.Delete(summaryPath); } catch { /* best effort */ }
             }
         }
 
