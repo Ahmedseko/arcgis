@@ -391,6 +391,24 @@
                             </StackPanel>
                         </Expander>
 
+                        <Expander Header="Color Reference Sampler" Style="{StaticResource SectionExpander}">
+                            <StackPanel Style="{StaticResource SectionContent}">
+                                <TextBlock Text="Click points on the raster to record their exact RGB/ExG value - for calibrating the ExG thresholds above against real colors instead of guessing. Fill in Label/Class afterward directly in the new layer's own Attribute Table."
+                                           Style="{StaticResource HintLine}"/>
+
+                                <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedColorSamplerRasterLayer}" Margin="0,0,0,8"/>
+
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Start Sampling" Command="{Binding StartColorSamplingCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="Stop Sampling" Command="{Binding StopColorSamplingCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                            Visibility="{Binding IsColorSampling, Converter={StaticResource BoolToVis}}"/>
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding ColorSamplerStatus}" Style="{StaticResource StatusLine}"/>
+                            </StackPanel>
+                        </Expander>
+
                         <Expander Header="Road/Trail Extraction" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
                                 <TextBlock Text="Extracts road/trail centerlines from bare-ground areas (same signal Land Clearing Detection uses) - skeletonized down to a single line down the middle of each road instead of a filled area."

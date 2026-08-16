@@ -119,6 +119,18 @@
             <disabledText />
           </tooltip>
         </tool>
+
+        <tool id="TreeCounterAddin_ColorSamplerTool"
+              caption="Sample Colors"
+              className="ColorSamplerMapTool"
+              loadOnClick="true"
+              condition="esri_mapping_mapPane"
+              keytip="B8">
+          <tooltip heading="Color Reference Sampler">
+            Click points on a raster to record their RGB/ExG value, for calibrating detection thresholds against real colors - activated from the Analyze tab's Color Reference Sampler panel
+            <disabledText />
+          </tooltip>
+        </tool>
       </controls>
 
       <dockPanes>
