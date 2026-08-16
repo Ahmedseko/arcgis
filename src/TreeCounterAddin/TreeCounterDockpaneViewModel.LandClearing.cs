@@ -185,17 +185,18 @@ namespace TreeCounterAddin
                 var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 var outputFc = Path.Combine(project.DefaultGeodatabasePath, $"LandClearing_{stamp}");
 
-                // Provider/ApiKey/Model are the same Settings-tab AI Vision Validation fields
-                // Tree Detection uses (TreeCounterDockpaneViewModel.TreeDetection.cs) - shared
-                // across both features, same "on automatically once a key is entered" UX.
+                // Provider/ApiKey/Model/UseAiValidation are the same Settings-tab AI Vision
+                // Validation fields Tree Detection uses (TreeDetection.cs) - shared across
+                // both features.
+                var aiEnabled = UseAiValidation && !string.IsNullOrWhiteSpace(ApiKey);
                 var request = new LandClearingRequest(
                     rasterPath, outputFc, LandClearingExgThreshold, LandClearingSmoothPx,
                     MinClearingAreaHa * 10000.0, excludeFcPath,
                     LandClearingOpeningIterations, LandClearingClosingIterations,
                     LandClearingFreshColor, LandClearingBrightMin, LandClearingFillHoleAreaM2,
-                    Provider: string.IsNullOrWhiteSpace(ApiKey) ? null : SelectedProvider.ToLowerInvariant(),
-                    ApiKey: string.IsNullOrWhiteSpace(ApiKey) ? null : ApiKey,
-                    Model: string.IsNullOrWhiteSpace(ApiKey) ? null : SelectedModel);
+                    Provider: aiEnabled ? SelectedProvider.ToLowerInvariant() : null,
+                    ApiKey: aiEnabled ? ApiKey : null,
+                    Model: aiEnabled ? SelectedModel : null);
 
                 var dispatcher = System.Windows.Application.Current.Dispatcher;
                 var result = await PythonBackendService.RunLandClearingAsync(
@@ -222,8 +223,8 @@ namespace TreeCounterAddin
                     // Same explicit-even-at-zero AI confirmation as Tree Detection - see its
                     // comment for why (a silently-failed key looks identical to "AI found
                     // nothing wrong" without this).
-                    var aiNote = string.IsNullOrWhiteSpace(ApiKey) ? ""
-                        : $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)";
+                    var aiNote = aiEnabled
+                        ? $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)" : "";
                     LandClearingStatus = (result.PolygonCount == 0
                         ? "Done: no cleared/bare areas found above the minimum area."
                         : $"Done: {result.PolygonCount} cleared area(s) found, {result.AreaHa:F2} ha total.") +

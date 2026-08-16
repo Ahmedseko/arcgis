@@ -128,6 +128,17 @@ namespace TreeCounterAddin
             }
         }
 
+        // Separate from "is ApiKey filled in" - a real report (2026-08-16) asked for a way
+        // to turn AI Vision Validation off without clearing/losing the saved key, e.g. to
+        // run a faster key-free pass first. Defaults on so an unchanged panel behaves
+        // exactly as before this existed (AI runs whenever a key is present).
+        private bool _useAiValidation = true;
+        public bool UseAiValidation
+        {
+            get => _useAiValidation;
+            set => SetProperty(ref _useAiValidation, value);
+        }
+
         private string _testKeyStatus;
         public string TestKeyStatus
         {
@@ -238,12 +249,13 @@ namespace TreeCounterAddin
                 var fcName = $"TreeCounter_{(SelectedProfile == "Oil Palm Plantation" ? "palm" : "forest")}_{DateTime.Now:yyyyMMdd_HHmmss}";
                 var outputFc = Path.Combine(project.DefaultGeodatabasePath, fcName);
 
+                var aiEnabled = UseAiValidation && !string.IsNullOrWhiteSpace(ApiKey);
                 var request = new DetectionRequest(
                     rasterPath, SelectedProfile, outputFc, Sigma, ExgThreshold, MinSmooth,
                     ExcludeClearedLand: ExcludeClearedLand,
-                    Provider: string.IsNullOrWhiteSpace(ApiKey) ? null : SelectedProvider.ToLowerInvariant(),
-                    ApiKey: string.IsNullOrWhiteSpace(ApiKey) ? null : ApiKey,
-                    Model: string.IsNullOrWhiteSpace(ApiKey) ? null : SelectedModel);
+                    Provider: aiEnabled ? SelectedProvider.ToLowerInvariant() : null,
+                    ApiKey: aiEnabled ? ApiKey : null,
+                    Model: aiEnabled ? SelectedModel : null);
 
                 var dispatcher = System.Windows.Application.Current.Dispatcher;
                 var result = await PythonBackendService.RunDetectionAsync(
@@ -268,8 +280,8 @@ namespace TreeCounterAddin
                     // from "it silently never ran" (e.g. a bad key - validate_trees fails
                     // open on request errors, so a broken key still returns a normal-looking
                     // result otherwise indistinguishable from success).
-                    var aiNote = string.IsNullOrWhiteSpace(ApiKey) ? ""
-                        : $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)";
+                    var aiNote = aiEnabled
+                        ? $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)" : "";
                     StatusText = $"Done: {result.TreeCount} trees detected across {result.AreaHa:F1} ha scanned." +
                         (result.FilteredClearedCount > 0 ? $" ({result.FilteredClearedCount} false positive(s) on cleared ground filtered out.)" : "") +
                         aiNote;
