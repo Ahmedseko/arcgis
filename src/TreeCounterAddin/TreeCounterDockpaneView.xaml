@@ -10,6 +10,7 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <local:BilingualTooltipConverter x:Key="BilingualTooltip"/>
         <local:InverseBooleanConverter x:Key="InverseBool"/>
+        <local:UiTextConverter x:Key="UiText"/>
 
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,0,0,2"/>
@@ -60,23 +61,23 @@
             <TextBlock Text="{Binding Heading}" FontWeight="Bold" FontSize="14" Margin="0,0,0,10"/>
 
             <DockPanel LastChildFill="False" Margin="0,0,0,10">
-                <TextBlock Text="Layers" DockPanel.Dock="Left" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                <Button Content="Refresh" Command="{Binding RefreshLayersCommand}"
+                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Layers}" DockPanel.Dock="Left" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Refresh}" Command="{Binding RefreshLayersCommand}"
                         DockPanel.Dock="Right" Padding="6,0" FontSize="10"
-                        ToolTip="Refresh the raster/polygon/point layer lists used throughout this panel"/>
+                        ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RefreshTooltip}"/>
             </DockPanel>
 
             <!-- Grouped by where each feature sits in the field workflow: get the area ready,
                  bring field data back in, run analysis on it, then the rarely-touched settings. -->
             <TabControl>
-                <TabItem Header="Prepare">
+                <TabItem Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Tab_Prepare}">
                     <StackPanel Style="{StaticResource TabContent}">
-                        <Expander Header="Flight Mission Planner" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Generates a coverage flight plan (waypoints + a battery-based mission split) over a survey area polygon, for planning a drone orthophoto capture before flying."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Survey area polygon layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_SurveyAreaLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PolygonLayers}" SelectedItem="{Binding SelectedFlightPlanningLayer}" Margin="0,0,0,8"/>
 
                                 <Grid Margin="0,0,0,8">
@@ -102,31 +103,31 @@
                                          BilingualTooltipConverter.cs) - hover either to see it, and it
                                          switches language with whatever's picked on the Help tab
                                          (IsHelpEnglish is shared app-wide, not a second language toggle). -->
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Altitude (m)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_AltitudeLabel}" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Altitude}"/>
                                     <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding FlightAltitudeM}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Altitude}"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="GSD (cm/px)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_GsdLabel}" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Gsd}"/>
                                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FlightGsdCmPerPx}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Gsd}"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Image width (px)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_ImageWidthLabel}" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=ImageWidth}"/>
                                     <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding FlightImageWidthPx}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=ImageWidth}"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Image height (px)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_ImageHeightLabel}" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=ImageHeight}"/>
                                     <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding FlightImageHeightPx}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=ImageHeight}"/>
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Front overlap (%)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_FrontOverlapLabel}" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=FrontOverlap}"/>
                                     <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding FlightFrontOverlapPct}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=FrontOverlap}"/>
-                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Side overlap (%)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_SideOverlapLabel}" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=SideOverlap}"/>
                                     <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding FlightSideOverlapPct}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=SideOverlap}"/>
-                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Flight direction (deg, 0 = N-S lines)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_DirectionLabel}" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Direction}"/>
                                     <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding FlightDirectionDeg}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Direction}"/>
@@ -134,36 +135,36 @@
                                          buttons stay readable even in a narrow docked panel. -->
                                     <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal"
                                                 HorizontalAlignment="Right" Margin="0,0,0,2">
-                                        <Button Content="Vertical" Command="{Binding SetDirectionVerticalCommand}"
-                                                Padding="6,2" ToolTip="Vertical - lines run north-south (0 deg)."/>
-                                        <Button Content="Horizontal" Command="{Binding SetDirectionHorizontalCommand}"
-                                                Padding="6,2" Margin="4,0,0,0" ToolTip="Horizontal - lines run east-west (90 deg)."/>
-                                        <Button Content="Suggest" Command="{Binding SuggestDirectionCommand}"
+                                        <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_Vertical}" Command="{Binding SetDirectionVerticalCommand}"
+                                                Padding="6,2" ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_VerticalTooltip}"/>
+                                        <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_Horizontal}" Command="{Binding SetDirectionHorizontalCommand}"
+                                                Padding="6,2" Margin="4,0,0,0" ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_HorizontalTooltip}"/>
+                                        <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_Suggest}" Command="{Binding SuggestDirectionCommand}"
                                                 Padding="6,2" Margin="4,0,0,0"
-                                                ToolTip="Analyzes the survey polygon's shape and fills in the direction that fits it best (fewer, longer coverage lines instead of many short zigzag columns) - usually a better fit than a plain Vertical/Horizontal guess."/>
+                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_SuggestTooltip}"/>
                                     </StackPanel>
-                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Speed (m/s)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_SpeedLabel}" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Speed}"/>
                                     <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding FlightSpeedMs}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Speed}"/>
-                                    <TextBlock Grid.Row="9" Grid.Column="0" Text="Max flight time / battery (min)" VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="9" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_BatteryLabel}" VerticalAlignment="Center"
                                                ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Battery}"/>
                                     <TextBox Grid.Row="9" Grid.Column="1" Text="{Binding MaxFlightMinutesPerBattery}" Margin="0,2"
                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource BilingualTooltip}, ConverterParameter=Battery}"/>
-                                    <CheckBox Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Content="Cross-hatch (fly a second pass at 90°, for better 3D reconstruction)"
+                                    <CheckBox Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_CrossHatch}"
                                               IsChecked="{Binding CrossHatch}" Margin="0,4,0,2"/>
-                                    <CheckBox Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Content="Corridor mode (follow a centerline instead of a straight-line grid)"
+                                    <CheckBox Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_CorridorMode}"
                                               IsChecked="{Binding CorridorMode}" Margin="0,2,0,2"
-                                              ToolTip="For a winding, narrow feature (river, road, pipeline) - flies passes that follow the centerline's own curvature instead of one fixed direction, which can't fit a shape that bends back on itself."/>
+                                              ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_CorridorModeTooltip}"/>
                                 </Grid>
 
                                 <StackPanel Visibility="{Binding CorridorMode, Converter={StaticResource BoolToVis}}" Margin="0,0,0,8">
-                                    <TextBlock Text="Centerline layer" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_CenterlineLabel}" Style="{StaticResource FieldLabel}"/>
                                     <ComboBox ItemsSource="{Binding PolylineLayers}" SelectedItem="{Binding SelectedCorridorCenterlineLayer}"/>
                                 </StackPanel>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Generate Mission" Command="{Binding GenerateMissionCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_GenerateMission}" Command="{Binding GenerateMissionCommand}" Style="{StaticResource ActionButton}"/>
                                 </StackPanel>
 
                                 <ProgressBar IsIndeterminate="True" Height="14" Margin="0,8,0,0"
@@ -171,24 +172,24 @@
 
                                 <TextBlock Text="{Binding FlightMissionStatus}" Style="{StaticResource StatusLine}"/>
 
-                                <TextBlock Text="Export format" Style="{StaticResource FieldLabel}" Margin="0,10,0,0"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_ExportFormatLabel}" Style="{StaticResource FieldLabel}" Margin="0,10,0,0"/>
                                 <ComboBox ItemsSource="{Binding ExportFormats}" SelectedItem="{Binding SelectedExportFormat}" Margin="0,0,0,8"/>
 
                                 <StackPanel Visibility="{Binding IsKmzFormatSelected, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="Drone model (sets the DJI-required code in the KMZ file)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_DroneModelLabel}" Style="{StaticResource FieldLabel}"/>
                                     <ComboBox ItemsSource="{Binding DroneModelNames}" SelectedItem="{Binding SelectedDroneModel}" Margin="0,0,0,8"/>
                                 </StackPanel>
 
-                                <Button Content="Export Mission..." Command="{Binding ExportMissionCommand}" Style="{StaticResource ActionButton}" HorizontalAlignment="Left"/>
+                                <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=FlightPlanner_ExportMission}" Command="{Binding ExportMissionCommand}" Style="{StaticResource ActionButton}" HorizontalAlignment="Left"/>
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Fishnet Generator" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Fishnet_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Planning polygon layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Fishnet_PlanningLayerLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PolygonLayers}" SelectedItem="{Binding SelectedPolygonLayer}" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="Cell size (map units)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Fishnet_CellSizeLabel}" Style="{StaticResource FieldLabel}"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <TextBox Text="{Binding CellWidth}" Width="60"/>
                                     <TextBlock Text=" x " VerticalAlignment="Center" Margin="4,0"/>
@@ -196,8 +197,8 @@
                                 </StackPanel>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Create Fishnet" Command="{Binding CreateFishnetCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Cancel" Command="{Binding CancelFishnetCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Fishnet_Create}" Command="{Binding CreateFishnetCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelFishnetCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsCreatingFishnet, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -208,15 +209,15 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Export to GPS (GPX)" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Gpx_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Polygons/lines export as tracks (boundary walked in the field), points export as waypoints. Works directly with Garmin devices, BaseCamp, or Garmin Connect."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Gpx_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Layer}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding GpxLayers}" SelectedItem="{Binding SelectedGpxLayer}" Margin="0,0,0,8"/>
 
-                                <Button Content="Export to GPX" Command="{Binding ExportGpxCommand}" Style="{StaticResource ActionButton}"/>
+                                <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Gpx_Export}" Command="{Binding ExportGpxCommand}" Style="{StaticResource ActionButton}"/>
 
                                 <ProgressBar IsIndeterminate="True" Height="14" Margin="0,8,0,0"
                                              Visibility="{Binding IsExportingGpx, Converter={StaticResource BoolToVis}}"/>
@@ -227,27 +228,27 @@
                     </StackPanel>
                 </TabItem>
 
-                <TabItem Header="Field Data">
+                <TabItem Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Tab_FieldData}">
                     <StackPanel Style="{StaticResource TabContent}">
-                        <Expander Header="Import Timber Cruising Excel" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ExcelImport_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Reads the &quot;TREE DATA&quot; sheet (species, diameter, height, volume, GPS X/Y) into a point layer."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ExcelImport_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <Button Content="Download Template..." Command="{Binding DownloadTemplateCommand}" Style="{StaticResource ActionButton}"/>
+                                <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ExcelImport_DownloadTemplate}" Command="{Binding DownloadTemplateCommand}" Style="{StaticResource ActionButton}"/>
                                 <TextBlock Text="{Binding TemplateStatus}" Style="{StaticResource StatusLine}" Margin="0,4,0,10"/>
 
-                                <TextBlock Text="Coordinate system" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ExcelImport_CoordSystemLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding UtmZoneOptions}" SelectedItem="{Binding SelectedUtmZoneLabel}" Margin="0,0,0,8"/>
 
                                 <StackPanel Visibility="{Binding IsOtherZoneSelected, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="WKID" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ExcelImport_WkidLabel}" Style="{StaticResource FieldLabel}"/>
                                     <TextBox Text="{Binding CruisingWkid}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8"/>
                                 </StackPanel>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Import Excel..." Command="{Binding ImportExcelCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Cancel" Command="{Binding CancelImportExcelCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ExcelImport_Import}" Command="{Binding ImportExcelCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelImportExcelCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsImportingExcel, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -258,14 +259,14 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Geotagged Field Photos" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=PhotoImport_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Pick one or more geotagged JPEGs (GPS EXIF data required) - each becomes a point with the photo attached; click its pop-up to view/enlarge. One-time import, not a watched folder - re-run this for photos added later."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=PhotoImport_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Import Photos..." Command="{Binding ImportPhotosCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Cancel" Command="{Binding CancelImportPhotosCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=PhotoImport_Import}" Command="{Binding ImportPhotosCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelImportPhotosCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsImportingPhotos, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -276,24 +277,24 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Photo Coordinate OCR (no EXIF GPS)" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=PhotoOcr_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="For photos with coordinates burned into the watermark but no EXIF GPS (see Geotagged Field Photos for photos that do have EXIF GPS). Runs fully offline - nothing leaves this computer. Every result must be reviewed and confirmed before any point is created."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=PhotoOcr_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Watermark format" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=PhotoOcr_FormatLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding OcrFormatOptions}" SelectedItem="{Binding OcrFormat}" Margin="0,0,0,8"/>
 
                                 <StackPanel Visibility="{Binding IsUtmFormatSelected, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="Default zone/hemisphere (used only if a photo's zone letter can't be read)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=PhotoOcr_DefaultZoneLabel}" Style="{StaticResource FieldLabel}"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                         <TextBox Text="{Binding OcrDefaultZone}" Width="50"/>
                                         <ComboBox ItemsSource="{Binding OcrHemisphereOptions}" SelectedItem="{Binding OcrDefaultHemisphere}" Width="120" Margin="6,0,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
 
-                                <Button Content="Select Photos to Scan..." Command="{Binding ScanPhotosForCoordinatesCommand}" Style="{StaticResource ActionButton}"
-                                        ToolTip="Opens a file picker to choose photos first, then scans whichever ones you select."/>
+                                <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=PhotoOcr_SelectPhotos}" Command="{Binding ScanPhotosForCoordinatesCommand}" Style="{StaticResource ActionButton}"
+                                        ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=PhotoOcr_SelectPhotosTooltip}"/>
 
                                 <ProgressBar IsIndeterminate="True" Height="14" Margin="0,8,0,0"
                                              Visibility="{Binding IsScanningPhotos, Converter={StaticResource BoolToVis}}"/>
@@ -302,17 +303,17 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Cruising Summary Report" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CruisingReport_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Builds a species x volume summary spreadsheet from an imported cruising layer (needs Volume and Species fields) - a data table, not a printable map layout."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CruisingReport_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Cruising point layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CruisingReport_LayerLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PointLayers}" SelectedItem="{Binding SelectedReportLayer}" Margin="0,0,0,8"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Generate Report..." Command="{Binding GenerateReportCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Cancel" Command="{Binding CancelReportCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CruisingReport_Generate}" Command="{Binding GenerateReportCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelReportCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsGeneratingReport, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -325,22 +326,22 @@
                     </StackPanel>
                 </TabItem>
 
-                <TabItem Header="Analyze">
+                <TabItem Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Tab_Analyze}">
                     <StackPanel Style="{StaticResource TabContent}">
-                        <Expander Header="Tree Detection" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=TreeDetection_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RasterLayerLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedRasterLayer}" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="Detection profile" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=TreeDetection_ProfileLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" Margin="0,0,0,8"/>
 
-                                <CheckBox Content="Exclude cleared/bare ground (recommended, roughly doubles run time)"
+                                <CheckBox Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=TreeDetection_ExcludeCleared}"
                                           IsChecked="{Binding ExcludeClearedLand}" Margin="0,0,0,8"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Detect Trees" Command="{Binding RunDetectionCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=TreeDetection_Detect}" Command="{Binding RunDetectionCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -358,23 +359,23 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Land Clearing Detection" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearing_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Opposite of tree detection - flags bare/cleared ground (low vegetation greenness) instead of tree crowns. Optionally exclude an already-known area (e.g. previously harvested) so results only show new clearings."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearing_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RasterLayerLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedLandClearingRasterLayer}" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="Exclude area layer (optional)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearing_ExcludeAreaLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PolygonLayers}" SelectedItem="{Binding SelectedExcludeAreaLayer}" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="Minimum area (hectares)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearing_MinAreaLabel}" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding MinClearingAreaHa}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Detect Clearing" Command="{Binding DetectLandClearingCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Cancel" Command="{Binding CancelLandClearingCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearing_Detect}" Command="{Binding DetectLandClearingCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelLandClearingCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsDetectingLandClearing, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -392,23 +393,23 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Color Reference Sampler" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ColorSampler_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Click points on the raster to record their exact RGB/ExG value - for calibrating the ExG thresholds above against real colors instead of guessing. Fill in Label/Class afterward directly in the new layer's own Attribute Table."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ColorSampler_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RasterLayerLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedColorSamplerRasterLayer}" Margin="0,0,0,8"
                                           IsEnabled="{Binding IsColorSampling, Converter={StaticResource InverseBool}}"/>
 
-                                <TextBlock Text="Category (one per session - Stop Sampling to switch)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ColorSampler_CategoryLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding SampleCategories}" Text="{Binding SelectedSampleCategory, UpdateSourceTrigger=PropertyChanged}"
                                           IsEditable="True" Margin="0,0,0,8"
                                           IsEnabled="{Binding IsColorSampling, Converter={StaticResource InverseBool}}"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Start Sampling" Command="{Binding StartColorSamplingCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Stop Sampling" Command="{Binding StopColorSamplingCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ColorSampler_Start}" Command="{Binding StartColorSamplingCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=ColorSampler_Stop}" Command="{Binding StopColorSamplingCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsColorSampling, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -416,20 +417,20 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Road/Trail Extraction" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RoadExtraction_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Extracts road/trail centerlines from bare-ground areas (same signal Land Clearing Detection uses) - skeletonized down to a single line down the middle of each road instead of a filled area."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RoadExtraction_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RasterLayerLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedRoadRasterLayer}" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="Drop stubs shorter than (meters)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RoadExtraction_MinDangleLabel}" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding MinDangleM}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Extract Roads" Command="{Binding ExtractRoadsCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Cancel" Command="{Binding CancelRoadExtractionCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RoadExtraction_Extract}" Command="{Binding ExtractRoadsCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelRoadExtractionCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsExtractingRoads, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -447,21 +448,21 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Compare Changes" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CompareChanges_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Compares two Tree Detection runs of the same site over time - trees in the old run with no match nearby are likely felled/lost, trees in the new run with no match are likely new/regrowth."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CompareChanges_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Old detection (point layer)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CompareChanges_OldLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PointLayers}" SelectedItem="{Binding SelectedCompareOldLayer}" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="New detection (point layer)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CompareChanges_NewLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PointLayers}" SelectedItem="{Binding SelectedCompareNewLayer}" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="Match distance (meters)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CompareChanges_MatchDistLabel}" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding CompareMaxDistM}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
-                                <Button Content="Compare" Command="{Binding CompareChangesCommand}" Style="{StaticResource ActionButton}"/>
+                                <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=CompareChanges_Compare}" Command="{Binding CompareChangesCommand}" Style="{StaticResource ActionButton}"/>
 
                                 <ProgressBar IsIndeterminate="True" Height="14" Margin="0,8,0,0"
                                              Visibility="{Binding IsComparingChanges, Converter={StaticResource BoolToVis}}"/>
@@ -470,15 +471,15 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Sliver Polygon Detection" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Sliver_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Reads every polygon's area and shape first, then auto-flags whatever is far smaller or far thinner/more elongated than typical for this layer - no manual threshold needed. Works on fishnet/grid output or a raw boundary layer."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Sliver_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Polygon layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Sliver_LayerLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PolygonLayers}" SelectedItem="{Binding SelectedSliverLayer}" Margin="0,0,0,8"/>
 
-                                <Button Content="Detect Slivers" Command="{Binding DetectSliversCommand}" Style="{StaticResource ActionButton}"/>
+                                <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Sliver_Detect}" Command="{Binding DetectSliversCommand}" Style="{StaticResource ActionButton}"/>
 
                                 <ProgressBar IsIndeterminate="True" Height="14" Margin="0,8,0,0"
                                              Visibility="{Binding IsDetectingSlivers, Converter={StaticResource BoolToVis}}"/>
@@ -487,12 +488,12 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Biomass &amp; Carbon Estimation" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Biomass_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Volume-based estimate (IPCC Tier 1 style) from a point layer's Volume field - approximate, tune the defaults for your species mix/region."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Biomass_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="Point layer (with Volume field)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Biomass_LayerLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PointLayers}" SelectedItem="{Binding SelectedBiomassLayer}" Margin="0,0,0,8"/>
 
                                 <Grid Margin="0,0,0,8">
@@ -506,17 +507,17 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Wood density (kg/m3)" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Biomass_WoodDensityLabel}" VerticalAlignment="Center"/>
                                     <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding WoodDensity}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Biomass expansion factor" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Biomass_ExpansionFactorLabel}" VerticalAlignment="Center"/>
                                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BiomassExpansionFactor}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Root-to-shoot ratio" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Biomass_RootShootLabel}" VerticalAlignment="Center"/>
                                     <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding RootShootRatio}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Carbon fraction" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Biomass_CarbonFractionLabel}" VerticalAlignment="Center"/>
                                     <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding CarbonFraction}" Margin="0,2"/>
                                 </Grid>
 
-                                <Button Content="Estimate" Command="{Binding EstimateBiomassCommand}" Style="{StaticResource ActionButton}"/>
+                                <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Biomass_Estimate}" Command="{Binding EstimateBiomassCommand}" Style="{StaticResource ActionButton}"/>
 
                                 <ProgressBar IsIndeterminate="True" Height="14" Margin="0,8,0,0"
                                              Visibility="{Binding IsEstimatingBiomass, Converter={StaticResource BoolToVis}}"/>
@@ -525,17 +526,17 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Slope from DEM" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Slope_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Computes slope (% rise) from a DEM raster to help assess logging accessibility - requires the Spatial Analyst extension."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Slope_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="DEM raster layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Slope_DemLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedDemLayer}" Margin="0,0,0,8"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Compute Slope" Command="{Binding ComputeSlopeCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Cancel" Command="{Binding CancelSlopeCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Slope_Compute}" Command="{Binding ComputeSlopeCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelSlopeCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsComputingSlope, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -546,23 +547,23 @@
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Riparian Buffer Check" Style="{StaticResource SectionExpander}">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Riparian_Header}" Style="{StaticResource SectionExpander}">
                             <StackPanel Style="{StaticResource SectionContent}">
-                                <TextBlock Text="Buffers the river/stream layer by the given distance and flags whatever part of the planning polygon falls inside it. No fixed legal distance is assumed - enter the width your regulation requires."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Riparian_Hint}"
                                            Style="{StaticResource HintLine}"/>
 
-                                <TextBlock Text="River/stream layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Riparian_RiverLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding GpxLayers}" SelectedItem="{Binding SelectedRiverLayer}" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="Planning polygon layer" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Riparian_PlanLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding PolygonLayers}" SelectedItem="{Binding SelectedBufferPlanLayer}" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="Buffer distance (meters)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Riparian_DistanceLabel}" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding BufferDistanceM}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Check Buffer" Command="{Binding CheckRiparianBufferCommand}" Style="{StaticResource ActionButton}"/>
-                                    <Button Content="Cancel" Command="{Binding CancelRiparianBufferCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Riparian_Check}" Command="{Binding CheckRiparianBufferCommand}" Style="{StaticResource ActionButton}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelRiparianBufferCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"
                                             Visibility="{Binding IsCheckingBuffer, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
 
@@ -581,14 +582,14 @@
                      add-in, see FavoritesStore. Its own tab (not a persistent section above
                      the TabControl, tried first) so a long favorites list can't push the tab
                      headers themselves out of view. -->
-                <TabItem Header="Favorites">
+                <TabItem Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Tab_Favorites}">
                     <StackPanel Style="{StaticResource TabContent}">
-                        <TextBlock Text="Search layer" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Favorites_SearchLabel}" Style="{StaticResource FieldLabel}"/>
                         <TextBox Text="{Binding LayerSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,4" ToolTip="Filter the layer list below by name"/>
+                                 Margin="0,0,0,4" ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Favorites_SearchTooltip}"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <ComboBox ItemsSource="{Binding FilteredLayerNames}" SelectedItem="{Binding SelectedLayerToFavorite}" Width="180"/>
-                            <Button Content="★ Add" Command="{Binding AddFavoriteCommand}" Padding="8,2" Margin="6,0,0,0" FontSize="11"/>
+                            <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Favorites_Add}" Command="{Binding AddFavoriteCommand}" Padding="8,2" Margin="6,0,0,0" FontSize="11"/>
                         </StackPanel>
 
                         <ItemsControl ItemsSource="{Binding FavoriteLayers}">
@@ -596,11 +597,11 @@
                                 <DataTemplate>
                                     <DockPanel Margin="0,2" LastChildFill="True">
                                         <Button Content="✕" DockPanel.Dock="Right" Padding="4,0" Margin="4,0,0,0" FontSize="10"
-                                                ToolTip="Remove from Favorites"
+                                                ToolTip="{Binding DataContext.IsHelpEnglish, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource UiText}, ConverterParameter=Favorites_Remove}"
                                                 Command="{Binding DataContext.RemoveFavoriteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}"/>
                                         <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsVisible, Mode=OneWay}"
-                                                  ToolTip="Toggle this layer's visibility"
+                                                  ToolTip="{Binding DataContext.IsHelpEnglish, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource UiText}, ConverterParameter=Favorites_ToggleVisibility}"
                                                   Command="{Binding DataContext.ToggleFavoriteVisibilityCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                   CommandParameter="{Binding}"/>
                                         <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Margin="4,0,0,0" TextTrimming="CharacterEllipsis"/>
@@ -614,11 +615,11 @@
                 <!-- A running log of what ran, when, and its result, across every feature -
                      see TreeCounterDockpaneViewModel.History.cs for how this is populated
                      generically off every feature's own "XxxStatus" property. -->
-                <TabItem Header="History">
+                <TabItem Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Tab_History}">
                     <StackPanel Style="{StaticResource TabContent}">
                         <DockPanel LastChildFill="False" Margin="0,0,0,8">
-                            <TextBlock Text="Recent activity, newest first" DockPanel.Dock="Left" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="Clear" Command="{Binding ClearHistoryCommand}" DockPanel.Dock="Right" Padding="6,0" FontSize="10"/>
+                            <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=History_Heading}" DockPanel.Dock="Left" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Clear}" Command="{Binding ClearHistoryCommand}" DockPanel.Dock="Right" Padding="6,0" FontSize="10"/>
                         </DockPanel>
 
                         <ItemsControl ItemsSource="{Binding RunHistory}">
@@ -631,9 +632,9 @@
                     </StackPanel>
                 </TabItem>
 
-                <TabItem Header="Settings">
+                <TabItem Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Tab_Settings}">
                     <StackPanel Style="{StaticResource TabContent}">
-                        <Expander Header="Advanced Detection Parameters" Margin="0,0,0,8">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AdvancedParams_Header}" Margin="0,0,0,8">
                             <Grid Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -644,18 +645,18 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Sigma (px)" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AdvancedParams_SigmaLabel}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Sigma}" Margin="0,2"/>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="ExG Threshold" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AdvancedParams_ExgLabel}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ExgThreshold}" Margin="0,2"/>
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Min Smooth" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AdvancedParams_MinSmoothLabel}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding MinSmooth}" Margin="0,2"/>
                             </Grid>
                         </Expander>
 
-                        <Expander Header="Land Clearing Parameters" Margin="0,0,0,8">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_Header}" Margin="0,0,0,8">
                             <StackPanel Margin="0,6,0,0">
-                                <TextBlock Text="Result too rough/fragmented, or missing narrower real clearings? Lower Opening and/or raise Closing - each site's imagery (camera, lighting, soil color) can need different smoothing than the defaults."
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_Hint}"
                                            TextWrapping="Wrap" Margin="0,0,0,6" FontSize="11" Foreground="Gray"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -668,37 +669,37 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="ExG Threshold" VerticalAlignment="Center"
-                                               ToolTip="Below this, a pixel counts as bare/cleared ground instead of vegetation. Lower catches more area as cleared (risks false positives); higher catches less (risks missing real clearings)."/>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_ExgLabel}" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_ExgTooltip}"/>
                                     <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding LandClearingExgThreshold}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Smooth (px)" VerticalAlignment="Center"
-                                               ToolTip="Gaussian blur applied before thresholding - reduces speckle from individual noisy pixels."/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_SmoothLabel}" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_SmoothTooltip}"/>
                                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding LandClearingSmoothPx}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Opening (erosion)" VerticalAlignment="Center"
-                                               ToolTip="Strips small false 'cleared' specks - but can also erase real clearings narrower than this many pixels. Lower if real narrow clearings are missing."/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_OpeningLabel}" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_OpeningTooltip}"/>
                                     <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding LandClearingOpeningIterations}" Margin="0,2"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Closing (dilation)" VerticalAlignment="Center"
-                                               ToolTip="Fills small gaps and merges nearby fragments into one shape - raise for smoother, more human-digitization-like boundaries instead of many small blobs."/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_ClosingLabel}" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_ClosingTooltip}"/>
                                     <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding LandClearingClosingIterations}" Margin="0,2"/>
                                 </Grid>
-                                <TextBlock Text="Fill holes ≤ (m²)" Margin="0,6,0,0"
-                                           ToolTip="Fills small interior holes (vegetation patches left standing inside an otherwise-cleared area) so the result is one solid polygon like manual digitization - large real forest islands are left alone. 0 = don't fill. Matches the original QGIS plugin's own default."/>
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_FillHoleLabel}" Margin="0,6,0,0"
+                                           ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_FillHoleTooltip}"/>
                                 <TextBox Text="{Binding LandClearingFillHoleAreaM2}" Margin="0,2" HorizontalAlignment="Left" Width="100"/>
-                                <CheckBox Content="Fresh color filter (also require bright + reddish soil - excludes roads/rivers)"
+                                <CheckBox Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_FreshColor}"
                                           IsChecked="{Binding LandClearingFreshColor}" Margin="0,6,0,2"/>
                                 <Grid Visibility="{Binding LandClearingFreshColor, Converter={StaticResource BoolToVis}}" Margin="0,2,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="140"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Brightness minimum" VerticalAlignment="Center"
-                                               ToolTip="How bright (0-255) raw RGB has to be to count as bare soil, not a darker road/river."/>
+                                    <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_BrightMinLabel}" VerticalAlignment="Center"
+                                               ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=LandClearingParams_BrightMinTooltip}"/>
                                     <TextBox Grid.Column="1" Text="{Binding LandClearingBrightMin}" Margin="0,2"/>
                                 </Grid>
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="AI Vision Validation" Margin="0,0,0,8">
+                        <Expander Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AiValidation_Header}" Margin="0,0,0,8">
                             <Grid Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -712,19 +713,19 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Optional - confirms Tree Detection, Land Clearing, and Road Extraction results via Gemini, OpenAI, or Claude."
+                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AiValidation_Hint}"
                                            TextWrapping="Wrap" Margin="0,0,0,6" FontSize="11" Foreground="Gray"/>
-                                <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Content="Enable AI Vision Validation"
+                                <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AiValidation_Enable}"
                                           IsChecked="{Binding UseAiValidation}" Margin="0,0,0,6"
-                                          ToolTip="Turn AI validation off without losing the key/provider below - e.g. to run a faster pass without it."/>
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Provider" VerticalAlignment="Center" IsEnabled="{Binding UseAiValidation}"/>
+                                          ToolTip="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AiValidation_EnableTooltip}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AiValidation_ProviderLabel}" VerticalAlignment="Center" IsEnabled="{Binding UseAiValidation}"/>
                                 <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Providers}" SelectedItem="{Binding SelectedProvider}" Margin="0,2" IsEnabled="{Binding UseAiValidation}"/>
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Model" VerticalAlignment="Center" IsEnabled="{Binding UseAiValidation}"/>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AiValidation_ModelLabel}" VerticalAlignment="Center" IsEnabled="{Binding UseAiValidation}"/>
                                 <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" Margin="0,2" IsEnabled="{Binding UseAiValidation}"/>
                                 <PasswordBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" x:Name="ApiKeyBox"
                                              PasswordChanged="ApiKeyBox_PasswordChanged" Margin="0,2" IsEnabled="{Binding UseAiValidation}"/>
                                 <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,4,0,0">
-                                    <Button Content="Test Key" Command="{Binding TestKeyCommand}" Padding="8,2" FontSize="10" IsEnabled="{Binding UseAiValidation}"/>
+                                    <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=AiValidation_TestKey}" Command="{Binding TestKeyCommand}" Padding="8,2" FontSize="10" IsEnabled="{Binding UseAiValidation}"/>
                                     <TextBlock Text="{Binding TestKeyStatus}" TextWrapping="Wrap" Margin="8,0,0,0"
                                                VerticalAlignment="Center" FontSize="10" Foreground="Gray"/>
                                 </StackPanel>
@@ -733,7 +734,7 @@
                     </StackPanel>
                 </TabItem>
 
-                <TabItem Header="Help">
+                <TabItem Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Tab_Help}">
                     <StackPanel Style="{StaticResource TabContent}">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                             <Button Content="English" Command="{Binding ShowHelpEnglishCommand}" Padding="10,4" Margin="0,0,6,0"
@@ -749,7 +750,7 @@
                     </StackPanel>
                 </TabItem>
 
-                <TabItem Header="About">
+                <TabItem Header="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Tab_About}">
                     <StackPanel Style="{StaticResource TabContent}" HorizontalAlignment="Center">
                         <TextBlock Text="🌳" FontSize="56" HorizontalAlignment="Center" Margin="0,10,0,6"/>
                         <TextBlock Text="Forestry Toolkit" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
@@ -758,10 +759,10 @@
                         <TextBlock Text="Drone-orthophoto forestry analysis for ArcGIS Pro: tree/oil palm detection, land clearing and road/trail extraction, change comparison, biomass &amp; carbon estimation, cruising data import, and field-data tools - ported and extended from the original QGIS plugin, LandTree Analyzer."
                                    TextWrapping="Wrap" HorizontalAlignment="Left" Margin="0,0,0,14"/>
 
-                        <TextBlock Text="Developer" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=About_DeveloperHeader}" FontWeight="SemiBold" HorizontalAlignment="Left"/>
                         <TextBlock Text="Ahmed Seko" HorizontalAlignment="Left" Margin="0,0,0,14"/>
 
-                        <TextBlock Text="Technology" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=About_TechHeader}" FontWeight="SemiBold" HorizontalAlignment="Left"/>
                         <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" Margin="0,0,0,14">
                             <Run Text="• ArcGIS Pro SDK (.NET / C# / WPF) - this add-in shell"/><LineBreak/>
                             <Run Text="• Python (arcpy, numpy, scipy, scikit-image) - detection/analysis backend, runs inside ArcGIS Pro's own conda environment"/><LineBreak/>
@@ -770,7 +771,7 @@
                             <Run Text="• Google Gemini / OpenAI / Anthropic Claude (optional, your own API key) - AI Vision Validation"/>
                         </TextBlock>
 
-                        <TextBlock Text="Source" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=About_SourceHeader}" FontWeight="SemiBold" HorizontalAlignment="Left"/>
                         <TextBlock Text="github.com/Ahmedseko/arcgis" HorizontalAlignment="Left" Margin="0,0,0,4"/>
                     </StackPanel>
                 </TabItem>
