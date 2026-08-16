@@ -33,7 +33,17 @@ from skimage.segmentation import slic
 
 from raster_io import RasterInfo, read_block
 
-DEFAULT_EXG_THRESHOLD = 18
+# Was 18 (the QGIS original's own default) until a real Color Reference Sampler dataset
+# (2026-08-17, 721 field-collected RGB/ExG samples across 6 categories via this add-in's
+# own sampler tool - see TreeCounterDockpaneViewModel.ColorSampler.cs) showed that value
+# badly under-catching real clearings: only 48.2% recall against the 110 confirmed
+# "Bukaan/tanah terbuka" samples in that set. A threshold sweep against the full labeled
+# set (110 positive vs. 587 negative - Forest canopy/Sungai-air/Bangunan-atap/Alat berat)
+# found 26 maximizes F1 - recall 92.7%, and precision *also* improves slightly (47.2% vs
+# 39.8%) - not a trade-off. Buildings/water remain a real, threshold-independent source of
+# false positives at any cutoff (14%/17% of those samples read as "cleared" regardless -
+# their RGB genuinely overlaps bare soil's), a separate problem this alone doesn't solve.
+DEFAULT_EXG_THRESHOLD = 26
 DEFAULT_SMOOTH_PX = 3
 
 # Water (ponds/rivers) also reads as low-ExG "cleared" - it has no vegetation greenness

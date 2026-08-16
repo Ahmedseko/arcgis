@@ -54,7 +54,11 @@ namespace TreeCounterAddin
         // detection in QGIS, with narrower real clearings eroded away entirely. Defaults here
         // match backend/land_clearing.py's own module defaults, so an unchanged panel behaves
         // exactly as before.
-        private double _landClearingExgThreshold = 18;
+        //
+        // ExG default raised 18 -> 26 (2026-08-17) - see land_clearing.py's own
+        // DEFAULT_EXG_THRESHOLD comment for the real 721-sample Color Reference Sampler
+        // dataset this came from (recall 48.2% -> 92.7%, precision also improved).
+        private double _landClearingExgThreshold = 26;
         public double LandClearingExgThreshold
         {
             get => _landClearingExgThreshold;
