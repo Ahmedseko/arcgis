@@ -70,25 +70,48 @@ namespace TreeCounterAddin
         // XAML) so a category outside this preset list can still be typed - the fc's own
         // Class field stays plain free text either way (2026-08-16 decision), this list is
         // just a fast-entry aid, not a hard constraint.
-        public ObservableCollection<string> SampleCategories { get; } = new()
+        //
+        // Bilingual (2026-08-16 follow-up report) - reuses the same IsHelpEnglish flag the
+        // Help tab already exposes and BilingualTooltipConverter.cs already reuses for
+        // Flight Mission Planner's tooltips, rather than adding a second independent
+        // language switch. RefreshSampleCategories is called from IsHelpEnglish's own
+        // setter (Help.cs) so switching language there updates this list too.
+        private static readonly (string En, string Id)[] SampleCategoryPairs =
         {
-            "Hutan/kanopi rapat",
-            "Vegetasi rendah/regrowth",
-            "Bukaan/tanah terbuka",
-            "Serpihan tebangan/kayu",
-            "Jalan/jalur",
-            "Sungai/air",
-            "Bayangan",
-            "Alat berat/kendaraan",
-            "Bangunan/atap",
-            "Lainnya/tidak yakin",
+            ("Forest canopy", "Hutan/kanopi rapat"),
+            ("Low vegetation/regrowth", "Vegetasi rendah/regrowth"),
+            ("Cleared/bare ground", "Bukaan/tanah terbuka"),
+            ("Felled-tree debris", "Serpihan tebangan/kayu"),
+            ("Road/track", "Jalan/jalur"),
+            ("Water/river", "Sungai/air"),
+            ("Shadow", "Bayangan"),
+            ("Heavy equipment/vehicle", "Alat berat/kendaraan"),
+            ("Building/roof", "Bangunan/atap"),
+            ("Other/unsure", "Lainnya/tidak yakin"),
         };
 
-        private string _selectedSampleCategory = "Hutan/kanopi rapat";
+        public ObservableCollection<string> SampleCategories { get; } = new();
+
+        private string _selectedSampleCategory;
         public string SelectedSampleCategory
         {
             get => _selectedSampleCategory;
             set => SetProperty(ref _selectedSampleCategory, value);
+        }
+
+        // Called once from the constructor (IsHelpEnglish's field initializer doesn't run
+        // its property setter, so nothing would populate this list at startup otherwise)
+        // and again from IsHelpEnglish's setter on every language switch. Keeps whichever
+        // category concept was selected, just re-displayed in the new language, instead of
+        // resetting back to the first item.
+        private void RefreshSampleCategories()
+        {
+            var previousIndex = SampleCategories.IndexOf(SelectedSampleCategory);
+            SampleCategories.Clear();
+            foreach (var (en, id) in SampleCategoryPairs)
+                SampleCategories.Add(IsHelpEnglish ? en : id);
+            SelectedSampleCategory = previousIndex >= 0 && previousIndex < SampleCategories.Count
+                ? SampleCategories[previousIndex] : SampleCategories[0];
         }
 
         private readonly List<ColorSample> _pendingColorSamples = new();

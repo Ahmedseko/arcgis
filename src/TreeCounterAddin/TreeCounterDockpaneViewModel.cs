@@ -56,6 +56,12 @@ namespace TreeCounterAddin
             _selectedUtmZoneLabel = savedZone.Label ?? OtherZoneLabel;
             _isOtherZoneSelected = savedZone.Label == null;
 
+            // Populates the bilingual Color Reference Sampler category list to match
+            // IsHelpEnglish's default (see TreeCounterDockpaneViewModel.ColorSampler.cs) -
+            // its own field initializer runs before this constructor body, so this can't
+            // happen there.
+            RefreshSampleCategories();
+
             // Ribbon status labels (RibbonControls.cs) subscribe to this static event at
             // their own construction time - which can happen before this dockpane instance
             // exists at all (DockPaneManager.Find lazily creates it on first use). Relying

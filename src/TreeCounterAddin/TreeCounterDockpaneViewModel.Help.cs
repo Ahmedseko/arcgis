@@ -17,6 +17,7 @@ namespace TreeCounterAddin
             {
                 SetProperty(ref _isHelpEnglish, value);
                 IsHelpIndonesian = !value;
+                RefreshSampleCategories();
             }
         }
 
