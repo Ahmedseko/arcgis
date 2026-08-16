@@ -116,12 +116,22 @@ def main() -> int:
         # Rounds the "staircase" pixel-boundary corners RasterToPolygon's own SIMPLIFY
         # option doesn't fully smooth out, into the kind of gently-curved boundary a human
         # tracing the area by eye would draw - same purpose as the QGIS original's Chaikin
-        # smoothing pass, PAEK is this toolkit's closest built-in equivalent. Tolerance is
-        # tied to the source raster's own pixel size so it scales with resolution instead
-        # of needing a per-raster manual value.
+        # smoothing pass, PAEK is this toolkit's closest built-in equivalent.
+        #
+        # Tolerance = closing_iterations * cell_size * 3, not just a flat cell_size * 3
+        # (~0.17m at this raster's ~0.058m/px - what this used to be). A real report
+        # (2026-08-16, real GMW site imagery) found the result still visibly "blocky"/
+        # jigsaw-puzzle-edged despite this step - the diamond-shaped notches binary_opening/
+        # closing leave behind scale with closing_iterations pixels (~15px ~ 0.87m here),
+        # not with the raw pixel size, so a tolerance smaller than that barely touches them.
+        # Tested against the real reported crop: 0.17m (unchanged), 1m still visibly blocky;
+        # 2-3m genuinely smooth, human-digitization-like. Scaling by closing_iterations
+        # keeps this correct if that setting or the raster's resolution changes, instead of
+        # a value re-tuned for one specific site.
         print("STAGE Smoothing boundaries...", flush=True)
         cell_size = arcpy.Raster(args.raster).meanCellWidth
-        arcpy.cartography.SmoothPolygon(current_fc, smoothed_fc, "PAEK", f"{cell_size * 3} Meters")
+        smooth_tolerance_m = max(args.closing_iterations * cell_size * 3, 0.5)
+        arcpy.cartography.SmoothPolygon(current_fc, smoothed_fc, "PAEK", f"{smooth_tolerance_m} Meters")
         arcpy.management.Delete(current_fc)
         current_fc = smoothed_fc
         print("PROGRESS 90", flush=True)
