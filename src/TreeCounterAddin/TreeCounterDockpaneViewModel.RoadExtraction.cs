@@ -66,19 +66,19 @@ namespace TreeCounterAddin
         {
             IsExtractingRoads = true;
             RoadExtractionProgress = 0;
-            RoadExtractionStatus = "Scanning for road/trail centerlines...";
+            RoadExtractionStatus = Tr("Scanning for road/trail centerlines...", "Memindai centerline jalan/jalur...");
             _roadExtractionCts = new CancellationTokenSource();
             try
             {
                 if (MapView.Active == null)
                 {
-                    RoadExtractionStatus = "No active map view. Open a map first.";
+                    RoadExtractionStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 var project = Project.Current;
                 if (project == null)
                 {
-                    RoadExtractionStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    RoadExtractionStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
 
@@ -89,7 +89,8 @@ namespace TreeCounterAddin
 
                 if (rasterPath == null)
                 {
-                    RoadExtractionStatus = "Raster layer not found - click Refresh and pick a layer again.";
+                    RoadExtractionStatus = Tr("Raster layer not found - click Refresh and pick a layer again.",
+                        "Layer raster tidak ditemukan - klik Refresh dan pilih layer lagi.");
                     return;
                 }
 
@@ -115,7 +116,7 @@ namespace TreeCounterAddin
 
                 if (result.Cancelled)
                 {
-                    RoadExtractionStatus = "Cancelled.";
+                    RoadExtractionStatus = Tr("Cancelled.", "Dibatalkan.");
                 }
                 else if (result.Success)
                 {
@@ -130,20 +131,25 @@ namespace TreeCounterAddin
                     // Same explicit-even-at-zero AI confirmation as Tree Detection/Land
                     // Clearing - see TreeDetection.cs's comment for why.
                     var aiNote = aiEnabled
-                        ? $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)" : "";
-                    RoadExtractionStatus = (result.LineCount == 0
-                        ? "Done: no road/trail centerlines found."
-                        : $"Done: {result.LineCount} segment(s) found, {result.LengthKm:F2} km total.") +
+                        ? Tr($" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)",
+                             $" (Divalidasi dengan {SelectedProvider} - {result.RejectedByAiCount} ditolak.)") : "";
+                    RoadExtractionStatus = Tr(
+                        result.LineCount == 0
+                            ? "Done: no road/trail centerlines found."
+                            : $"Done: {result.LineCount} segment(s) found, {result.LengthKm:F2} km total.",
+                        result.LineCount == 0
+                            ? "Selesai: tidak ada centerline jalan/jalur ditemukan."
+                            : $"Selesai: {result.LineCount} segmen ditemukan, total {result.LengthKm:F2} km.") +
                         aiNote;
                 }
                 else
                 {
-                    RoadExtractionStatus = $"Failed: {result.ErrorMessage}";
+                    RoadExtractionStatus = Tr($"Failed: {result.ErrorMessage}", $"Gagal: {result.ErrorMessage}");
                 }
             }
             catch (Exception ex)
             {
-                RoadExtractionStatus = $"Unexpected error: {ex.Message}";
+                RoadExtractionStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

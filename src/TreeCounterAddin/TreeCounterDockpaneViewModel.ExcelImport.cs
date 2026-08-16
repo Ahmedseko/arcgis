@@ -110,28 +110,28 @@ namespace TreeCounterAddin
                 var dialog = new OpenFileDialog
                 {
                     Filter = "Excel files (*.xlsx;*.xls)|*.xlsx;*.xls",
-                    Title = "Select Timber Cruising Excel File"
+                    Title = Tr("Select Timber Cruising Excel File", "Pilih File Excel Timber Cruising")
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    ImportExcelStatus = "Cancelled.";
+                    ImportExcelStatus = Tr("Cancelled.", "Dibatalkan.");
                     return;
                 }
 
                 var project = Project.Current;
                 if (project == null)
                 {
-                    ImportExcelStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    ImportExcelStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
                 if (MapView.Active == null)
                 {
-                    ImportExcelStatus = "No active map view. Open a map first.";
+                    ImportExcelStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 var map = MapView.Active.Map;
 
-                ImportExcelStatus = "Reading Excel sheet...";
+                ImportExcelStatus = Tr("Reading Excel sheet...", "Membaca sheet Excel...");
 
                 var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 var tableFc = Path.Combine(project.DefaultGeodatabasePath, $"CruisingImport_tmp_{stamp}");
@@ -150,19 +150,21 @@ namespace TreeCounterAddin
                 }
                 if (tableResult.IsFailed)
                 {
-                    ImportExcelStatus = $"Failed to read Excel (expected a \"TREE DATA\" sheet): " +
-                        $"{tableResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    ImportExcelStatus = Tr(
+                        $"Failed to read Excel (expected a \"TREE DATA\" sheet): {tableResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal membaca Excel (diharapkan ada sheet \"TREE DATA\"): {tableResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
-                ImportExcelStatus = "Converting X/Y to points...";
+                ImportExcelStatus = Tr("Converting X/Y to points...", "Mengonversi X/Y jadi titik...");
 
                 var pointResult = await Geoprocessing.ExecuteToolAsync("management.XYTableToPoint",
                     Geoprocessing.MakeValueArray(tableFc, pointFc, "X", "Y", "", CruisingWkid),
                     null, cancelToken: _importExcelCts.Token, flags: GPExecuteToolFlags.RefreshProjectItems);
                 if (pointResult.IsFailed)
                 {
-                    ImportExcelStatus = $"Failed to convert to points: {pointResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    ImportExcelStatus = Tr($"Failed to convert to points: {pointResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal mengonversi jadi titik: {pointResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
@@ -204,15 +206,16 @@ namespace TreeCounterAddin
                     return (count, totalVol);
                 });
 
-                ImportExcelStatus = $"Done: imported {treeCount} trees, {totalVolume:F2} m3 total volume.";
+                ImportExcelStatus = Tr($"Done: imported {treeCount} trees, {totalVolume:F2} m3 total volume.",
+                    $"Selesai: {treeCount} pohon diimpor, total volume {totalVolume:F2} m3.");
             }
             catch (OperationCanceledException)
             {
-                ImportExcelStatus = "Cancelled.";
+                ImportExcelStatus = Tr("Cancelled.", "Dibatalkan.");
             }
             catch (Exception ex)
             {
-                ImportExcelStatus = $"Unexpected error: {ex.Message}";
+                ImportExcelStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {
@@ -237,7 +240,8 @@ namespace TreeCounterAddin
                     "Templates", "TreeCruisingTemplate.xlsx");
                 if (!File.Exists(bundledPath))
                 {
-                    TemplateStatus = "Template file missing from add-in install - reinstall the add-in.";
+                    TemplateStatus = Tr("Template file missing from add-in install - reinstall the add-in.",
+                        "File template hilang dari instalasi add-in - install ulang add-in-nya.");
                     return;
                 }
 
@@ -249,16 +253,16 @@ namespace TreeCounterAddin
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    TemplateStatus = "Cancelled.";
+                    TemplateStatus = Tr("Cancelled.", "Dibatalkan.");
                     return;
                 }
 
                 File.Copy(bundledPath, dialog.FileName, overwrite: true);
-                TemplateStatus = $"Done: saved to {dialog.FileName}";
+                TemplateStatus = Tr($"Done: saved to {dialog.FileName}", $"Selesai: disimpan ke {dialog.FileName}");
             }
             catch (Exception ex)
             {
-                TemplateStatus = $"Unexpected error: {ex.Message}";
+                TemplateStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
         }
     }

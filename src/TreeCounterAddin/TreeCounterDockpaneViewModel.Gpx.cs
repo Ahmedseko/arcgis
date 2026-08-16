@@ -51,13 +51,13 @@ namespace TreeCounterAddin
         private async Task ExportGpxAsync()
         {
             IsExportingGpx = true;
-            GpxStatus = "Exporting...";
+            GpxStatus = Tr("Exporting...", "Mengekspor...");
             string tempLineFc = null;
             try
             {
                 if (MapView.Active == null)
                 {
-                    GpxStatus = "No active map view. Open a map first.";
+                    GpxStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
 
@@ -67,14 +67,14 @@ namespace TreeCounterAddin
                         .FirstOrDefault(l => l.Name == SelectedGpxLayer));
                 if (layer == null)
                 {
-                    GpxStatus = "Layer not found - click Refresh and pick again.";
+                    GpxStatus = Tr("Layer not found - click Refresh and pick again.", "Layer tidak ditemukan - klik Refresh dan pilih lagi.");
                     return;
                 }
 
                 var (sourcePath, shapeType) = await QueuedTask.Run(() => (layer.GetPath()?.LocalPath, layer.ShapeType));
                 if (sourcePath == null)
                 {
-                    GpxStatus = "Failed to read the layer's data path.";
+                    GpxStatus = Tr("Failed to read the layer's data path.", "Gagal membaca path data layer.");
                     return;
                 }
 
@@ -86,7 +86,7 @@ namespace TreeCounterAddin
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    GpxStatus = "Cancelled.";
+                    GpxStatus = Tr("Cancelled.", "Dibatalkan.");
                     return;
                 }
 
@@ -96,11 +96,11 @@ namespace TreeCounterAddin
                     var project = Project.Current;
                     if (project == null)
                     {
-                        GpxStatus = "No open ArcGIS Pro project. Create or open one first.";
+                        GpxStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                         return;
                     }
 
-                    GpxStatus = "Converting polygon boundary to a line...";
+                    GpxStatus = Tr("Converting polygon boundary to a line...", "Mengonversi batas poligon jadi garis...");
                     tempLineFc = Path.Combine(project.DefaultGeodatabasePath, $"GpxBoundary_tmp_{DateTime.Now:yyyyMMdd_HHmmss}");
 
                     var lineResult = await Geoprocessing.ExecuteToolAsync("management.PolygonToLine",
@@ -108,7 +108,8 @@ namespace TreeCounterAddin
                         null, cancelToken: null, flags: GPExecuteToolFlags.RefreshProjectItems);
                     if (lineResult.IsFailed)
                     {
-                        GpxStatus = $"Failed to convert polygon boundary: {lineResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                        GpxStatus = Tr($"Failed to convert polygon boundary: {lineResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                            $"Gagal mengonversi batas poligon: {lineResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                         return;
                     }
                     gpxSourcePath = tempLineFc;
@@ -119,15 +120,16 @@ namespace TreeCounterAddin
                     null, cancelToken: null, flags: GPExecuteToolFlags.RefreshProjectItems);
                 if (result.IsFailed)
                 {
-                    GpxStatus = $"Failed to export GPX: {result.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    GpxStatus = Tr($"Failed to export GPX: {result.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal mengekspor GPX: {result.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
-                GpxStatus = $"Done: exported to {dialog.FileName}";
+                GpxStatus = Tr($"Done: exported to {dialog.FileName}", $"Selesai: diekspor ke {dialog.FileName}");
             }
             catch (Exception ex)
             {
-                GpxStatus = $"Unexpected error: {ex.Message}";
+                GpxStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

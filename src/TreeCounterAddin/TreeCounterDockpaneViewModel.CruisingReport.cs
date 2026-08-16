@@ -50,19 +50,19 @@ namespace TreeCounterAddin
         private async Task GenerateReportAsync()
         {
             IsGeneratingReport = true;
-            ReportStatus = "Generating report...";
+            ReportStatus = Tr("Generating report...", "Membuat laporan...");
             _reportCts = new CancellationTokenSource();
             try
             {
                 if (MapView.Active == null)
                 {
-                    ReportStatus = "No active map view. Open a map first.";
+                    ReportStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 var project = Project.Current;
                 if (project == null)
                 {
-                    ReportStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    ReportStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
 
@@ -72,7 +72,7 @@ namespace TreeCounterAddin
                         .FirstOrDefault(l => l.Name == SelectedReportLayer));
                 if (layer == null)
                 {
-                    ReportStatus = "Layer not found - click Refresh and pick again.";
+                    ReportStatus = Tr("Layer not found - click Refresh and pick again.", "Layer tidak ditemukan - klik Refresh dan pilih lagi.");
                     return;
                 }
 
@@ -89,12 +89,13 @@ namespace TreeCounterAddin
 
                 if (sourcePath == null)
                 {
-                    ReportStatus = "Failed to read the layer's data path.";
+                    ReportStatus = Tr("Failed to read the layer's data path.", "Gagal membaca path data layer.");
                     return;
                 }
                 if (volumeField == null || speciesField == null)
                 {
-                    ReportStatus = "Layer needs both a Volume field and a Species field to build a summary - import cruising data first.";
+                    ReportStatus = Tr("Layer needs both a Volume field and a Species field to build a summary - import cruising data first.",
+                        "Layer butuh field Volume dan field Species untuk membuat ringkasan - import data cruising dulu.");
                     return;
                 }
 
@@ -106,7 +107,7 @@ namespace TreeCounterAddin
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    ReportStatus = "Cancelled.";
+                    ReportStatus = Tr("Cancelled.", "Dibatalkan.");
                     return;
                 }
 
@@ -118,7 +119,8 @@ namespace TreeCounterAddin
                     null, cancelToken: _reportCts.Token, flags: GPExecuteToolFlags.RefreshProjectItems);
                 if (statsResult.IsFailed)
                 {
-                    ReportStatus = $"Failed to summarize: {statsResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    ReportStatus = Tr($"Failed to summarize: {statsResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal membuat ringkasan: {statsResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
@@ -131,19 +133,20 @@ namespace TreeCounterAddin
 
                 if (exportResult.IsFailed)
                 {
-                    ReportStatus = $"Failed to export to Excel: {exportResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    ReportStatus = Tr($"Failed to export to Excel: {exportResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal ekspor ke Excel: {exportResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
-                ReportStatus = $"Done: species/volume summary saved to {dialog.FileName}";
+                ReportStatus = Tr($"Done: species/volume summary saved to {dialog.FileName}", $"Selesai: ringkasan spesies/volume disimpan ke {dialog.FileName}");
             }
             catch (OperationCanceledException)
             {
-                ReportStatus = "Cancelled.";
+                ReportStatus = Tr("Cancelled.", "Dibatalkan.");
             }
             catch (Exception ex)
             {
-                ReportStatus = $"Unexpected error: {ex.Message}";
+                ReportStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

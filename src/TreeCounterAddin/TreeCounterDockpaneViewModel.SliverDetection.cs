@@ -55,12 +55,12 @@ namespace TreeCounterAddin
         private async Task DetectSliversAsync()
         {
             IsDetectingSlivers = true;
-            SliverStatus = "Scanning...";
+            SliverStatus = Tr("Scanning...", "Memindai...");
             try
             {
                 if (MapView.Active == null)
                 {
-                    SliverStatus = "No active map view. Open a map first.";
+                    SliverStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 var map = MapView.Active.Map;
@@ -69,7 +69,7 @@ namespace TreeCounterAddin
                         .FirstOrDefault(l => l.Name == SelectedSliverLayer));
                 if (layer == null)
                 {
-                    SliverStatus = "Layer not found - click Refresh and pick again.";
+                    SliverStatus = Tr("Layer not found - click Refresh and pick again.", "Layer tidak ditemukan - klik Refresh dan pilih lagi.");
                     return;
                 }
 
@@ -108,8 +108,9 @@ namespace TreeCounterAddin
 
                 if (oids.Count == 0)
                 {
-                    SliverStatus = $"No slivers found (median part {medianAreaHa:F4} ha / thinness {medianThinness:F2}; " +
-                        $"flagging under {areaThresholdHa:F4} ha or thinness {thinnessThreshold:F2}).";
+                    SliverStatus = Tr(
+                        $"No slivers found (median part {medianAreaHa:F4} ha / thinness {medianThinness:F2}; flagging under {areaThresholdHa:F4} ha or thinness {thinnessThreshold:F2}).",
+                        $"Tidak ada sliver ditemukan (median bagian {medianAreaHa:F4} ha / thinness {medianThinness:F2}; menandai di bawah {areaThresholdHa:F4} ha atau thinness {thinnessThreshold:F2}).");
                     return;
                 }
 
@@ -120,12 +121,13 @@ namespace TreeCounterAddin
                         SelectionCombinationMethod.New);
                 });
 
-                SliverStatus = $"Found {oids.Count} sliver polygon(s) (area < {areaThresholdHa:F4} ha or thinness < {thinnessThreshold:F2}), " +
-                    $"{totalArea / 10000.0:F4} ha total - selected on map.";
+                SliverStatus = Tr(
+                    $"Found {oids.Count} sliver polygon(s) (area < {areaThresholdHa:F4} ha or thinness < {thinnessThreshold:F2}), {totalArea / 10000.0:F4} ha total - selected on map.",
+                    $"Ditemukan {oids.Count} poligon sliver (luas < {areaThresholdHa:F4} ha atau thinness < {thinnessThreshold:F2}), total {totalArea / 10000.0:F4} ha - terpilih di map.");
             }
             catch (Exception ex)
             {
-                SliverStatus = $"Unexpected error: {ex.Message}";
+                SliverStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

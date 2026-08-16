@@ -69,25 +69,25 @@ namespace TreeCounterAddin
         private async Task CheckRiparianBufferAsync()
         {
             IsCheckingBuffer = true;
-            BufferStatus = "Checking...";
+            BufferStatus = Tr("Checking...", "Memeriksa...");
             _bufferCts = new CancellationTokenSource();
             try
             {
                 if (MapView.Active == null)
                 {
-                    BufferStatus = "No active map view. Open a map first.";
+                    BufferStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 if (BufferDistanceM <= 0)
                 {
-                    BufferStatus = "Buffer distance must be greater than 0.";
+                    BufferStatus = Tr("Buffer distance must be greater than 0.", "Jarak buffer harus lebih besar dari 0.");
                     return;
                 }
 
                 var project = Project.Current;
                 if (project == null)
                 {
-                    BufferStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    BufferStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
 
@@ -100,7 +100,7 @@ namespace TreeCounterAddin
                 });
                 if (riverLayer == null || planLayer == null)
                 {
-                    BufferStatus = "Layer not found - click Refresh and pick again.";
+                    BufferStatus = Tr("Layer not found - click Refresh and pick again.", "Layer tidak ditemukan - klik Refresh dan pilih lagi.");
                     return;
                 }
 
@@ -108,7 +108,7 @@ namespace TreeCounterAddin
                     (riverLayer.GetPath()?.LocalPath, planLayer.GetPath()?.LocalPath));
                 if (riverPath == null || planPath == null)
                 {
-                    BufferStatus = "Failed to read the layers' data paths.";
+                    BufferStatus = Tr("Failed to read the layers' data paths.", "Gagal membaca path data layer-layer tersebut.");
                     return;
                 }
 
@@ -121,7 +121,8 @@ namespace TreeCounterAddin
                     null, cancelToken: _bufferCts.Token, flags: GPExecuteToolFlags.RefreshProjectItems);
                 if (bufferResult.IsFailed)
                 {
-                    BufferStatus = $"Failed to buffer river layer: {bufferResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    BufferStatus = Tr($"Failed to buffer river layer: {bufferResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal membuat buffer layer sungai: {bufferResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
@@ -130,7 +131,8 @@ namespace TreeCounterAddin
                     null, cancelToken: _bufferCts.Token, flags: GPExecuteToolFlags.RefreshProjectItems);
                 if (intersectResult.IsFailed)
                 {
-                    BufferStatus = $"Failed to intersect with buffer: {intersectResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    BufferStatus = Tr($"Failed to intersect with buffer: {intersectResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal intersect dengan buffer: {intersectResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
@@ -164,19 +166,21 @@ namespace TreeCounterAddin
                         await QueuedTask.Run(() => map.RemoveLayer(conflictLayer));
                     await Geoprocessing.ExecuteToolAsync("management.Delete",
                         Geoprocessing.MakeValueArray(conflictFc), null, cancelToken: null, flags: GPExecuteToolFlags.RefreshProjectItems);
-                    BufferStatus = $"No conflict - \"{SelectedBufferPlanLayer}\" stays outside the {BufferDistanceM:F0} m buffer around \"{SelectedRiverLayer}\".";
+                    BufferStatus = Tr($"No conflict - \"{SelectedBufferPlanLayer}\" stays outside the {BufferDistanceM:F0} m buffer around \"{SelectedRiverLayer}\".",
+                        $"Tidak ada konflik - \"{SelectedBufferPlanLayer}\" tetap di luar buffer {BufferDistanceM:F0} m di sekitar \"{SelectedRiverLayer}\".");
                     return;
                 }
 
-                BufferStatus = $"Found {areaHa:F4} ha of \"{SelectedBufferPlanLayer}\" within {BufferDistanceM:F0} m of \"{SelectedRiverLayer}\" - added as a layer.";
+                BufferStatus = Tr($"Found {areaHa:F4} ha of \"{SelectedBufferPlanLayer}\" within {BufferDistanceM:F0} m of \"{SelectedRiverLayer}\" - added as a layer.",
+                    $"Ditemukan {areaHa:F4} ha dari \"{SelectedBufferPlanLayer}\" dalam radius {BufferDistanceM:F0} m dari \"{SelectedRiverLayer}\" - ditambahkan sebagai layer.");
             }
             catch (OperationCanceledException)
             {
-                BufferStatus = "Cancelled.";
+                BufferStatus = Tr("Cancelled.", "Dibatalkan.");
             }
             catch (Exception ex)
             {
-                BufferStatus = $"Unexpected error: {ex.Message}";
+                BufferStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

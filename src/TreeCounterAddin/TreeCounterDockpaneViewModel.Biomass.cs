@@ -75,12 +75,12 @@ namespace TreeCounterAddin
         private async Task EstimateBiomassAsync()
         {
             IsEstimatingBiomass = true;
-            BiomassStatus = "Calculating...";
+            BiomassStatus = Tr("Calculating...", "Menghitung...");
             try
             {
                 if (MapView.Active == null)
                 {
-                    BiomassStatus = "No active map view. Open a map first.";
+                    BiomassStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 var map = MapView.Active.Map;
@@ -89,7 +89,7 @@ namespace TreeCounterAddin
                         .FirstOrDefault(l => l.Name == SelectedBiomassLayer));
                 if (layer == null)
                 {
-                    BiomassStatus = "Layer not found - click Refresh and pick again.";
+                    BiomassStatus = Tr("Layer not found - click Refresh and pick again.", "Layer tidak ditemukan - klik Refresh dan pilih lagi.");
                     return;
                 }
 
@@ -113,7 +113,8 @@ namespace TreeCounterAddin
 
                 if (totalVolume == null)
                 {
-                    BiomassStatus = "Layer has no Volume field - import cruising data with volume first.";
+                    BiomassStatus = Tr("Layer has no Volume field - import cruising data with volume first.",
+                        "Layer tidak punya field Volume - import data cruising dengan volume dulu.");
                     return;
                 }
 
@@ -142,13 +143,15 @@ namespace TreeCounterAddin
                     $"!{volumeField}! * {WoodDensity.ToString(inv)} * {BiomassExpansionFactor.ToString(inv)} * (1 + {RootShootRatio.ToString(inv)})");
                 var carbonOk = biomassOk && await AddAndCalcFieldAsync("Carbon_kg", $"!Biomass_kg! * {CarbonFraction.ToString(inv)}");
 
-                BiomassStatus = $"Done: {totalVolume.Value:F1} m3 -> {totalBiomassKg / 1000:F2} t biomass, " +
-                    $"{carbonKg / 1000:F2} t carbon, {co2eKg / 1000:F2} t CO2e." +
-                    (carbonOk ? " Per-tree Biomass_kg/Carbon_kg fields added." : " Note: per-tree fields could not be added.");
+                var fieldsNote = Tr(
+                    carbonOk ? " Per-tree Biomass_kg/Carbon_kg fields added." : " Note: per-tree fields could not be added.",
+                    carbonOk ? " Field Biomass_kg/Carbon_kg per pohon ditambahkan." : " Catatan: field per pohon tidak bisa ditambahkan.");
+                BiomassStatus = Tr($"Done: {totalVolume.Value:F1} m3 -> {totalBiomassKg / 1000:F2} t biomass, {carbonKg / 1000:F2} t carbon, {co2eKg / 1000:F2} t CO2e.",
+                    $"Selesai: {totalVolume.Value:F1} m3 -> {totalBiomassKg / 1000:F2} t biomassa, {carbonKg / 1000:F2} t karbon, {co2eKg / 1000:F2} t CO2e.") + fieldsNote;
             }
             catch (Exception ex)
             {
-                BiomassStatus = $"Unexpected error: {ex.Message}";
+                BiomassStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

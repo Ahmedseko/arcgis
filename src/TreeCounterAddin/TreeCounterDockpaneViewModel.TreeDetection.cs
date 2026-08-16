@@ -211,13 +211,13 @@ namespace TreeCounterAddin
         {
             IsRunning = true;
             Progress = 0;
-            StatusText = $"Running detection ({SelectedProfile})...";
+            StatusText = Tr($"Running detection ({SelectedProfile})...", $"Menjalankan deteksi ({SelectedProfile})...");
             _runCts = new CancellationTokenSource();
             try
             {
                 if (MapView.Active == null)
                 {
-                    StatusText = "No active map view. Open a map first.";
+                    StatusText = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
 
@@ -235,14 +235,16 @@ namespace TreeCounterAddin
 
                 if (rasterPath == null)
                 {
-                    StatusText = "Raster layer not found - click Refresh and pick a layer again.";
+                    StatusText = Tr("Raster layer not found - click Refresh and pick a layer again.",
+                        "Layer raster tidak ditemukan - klik Refresh dan pilih layer lagi.");
                     return;
                 }
 
                 var project = Project.Current;
                 if (project == null)
                 {
-                    StatusText = "No open ArcGIS Pro project. Create or open one first.";
+                    StatusText = Tr("No open ArcGIS Pro project. Create or open one first.",
+                        "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
 
@@ -266,7 +268,7 @@ namespace TreeCounterAddin
 
                 if (result.Cancelled)
                 {
-                    StatusText = "Cancelled.";
+                    StatusText = Tr("Cancelled.", "Dibatalkan.");
                 }
                 else if (result.Success)
                 {
@@ -281,14 +283,18 @@ namespace TreeCounterAddin
                     // open on request errors, so a broken key still returns a normal-looking
                     // result otherwise indistinguishable from success).
                     var aiNote = aiEnabled
-                        ? $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)" : "";
-                    StatusText = $"Done: {result.TreeCount} trees detected across {result.AreaHa:F1} ha scanned." +
-                        (result.FilteredClearedCount > 0 ? $" ({result.FilteredClearedCount} false positive(s) on cleared ground filtered out.)" : "") +
-                        aiNote;
+                        ? Tr($" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)",
+                             $" (Divalidasi dengan {SelectedProvider} - {result.RejectedByAiCount} ditolak.)") : "";
+                    var clearedNote = result.FilteredClearedCount > 0
+                        ? Tr($" ({result.FilteredClearedCount} false positive(s) on cleared ground filtered out.)",
+                             $" ({result.FilteredClearedCount} false positive di tanah terbuka telah disaring.)") : "";
+                    StatusText = Tr($"Done: {result.TreeCount} trees detected across {result.AreaHa:F1} ha scanned.",
+                        $"Selesai: {result.TreeCount} pohon terdeteksi di {result.AreaHa:F1} ha yang dipindai.") +
+                        clearedNote + aiNote;
                 }
                 else
                 {
-                    StatusText = $"Failed: {result.ErrorMessage}";
+                    StatusText = Tr($"Failed: {result.ErrorMessage}", $"Gagal: {result.ErrorMessage}");
                 }
             }
             catch (Exception ex)
@@ -297,7 +303,7 @@ namespace TreeCounterAddin
                 // without this catch, any exception here (e.g. Project.Current access,
                 // QueuedTask failures) disappears with zero visible effect, which is exactly
                 // the "I click it and nothing happens" symptom.
-                StatusText = $"Unexpected error: {ex.Message}";
+                StatusText = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {
@@ -310,16 +316,16 @@ namespace TreeCounterAddin
         private async Task TestKeyAsync()
         {
             IsTestingKey = true;
-            TestKeyStatus = "Testing...";
+            TestKeyStatus = Tr("Testing...", "Menguji...");
             try
             {
                 var (ok, message) = await PythonBackendService.TestApiKeyAsync(
                     SelectedProvider.ToLowerInvariant(), ApiKey, SelectedModel);
-                TestKeyStatus = (ok ? "OK: " : "Failed: ") + message;
+                TestKeyStatus = Tr(ok ? "OK: " : "Failed: ", ok ? "OK: " : "Gagal: ") + message;
             }
             catch (Exception ex)
             {
-                TestKeyStatus = "Failed: " + ex.Message;
+                TestKeyStatus = Tr("Failed: ", "Gagal: ") + ex.Message;
             }
             finally
             {

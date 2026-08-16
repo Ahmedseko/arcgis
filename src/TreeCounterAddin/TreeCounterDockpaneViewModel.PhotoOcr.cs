@@ -89,25 +89,25 @@ namespace TreeCounterAddin
             {
                 var dialog = new OpenFileDialog
                 {
-                    Title = "Select photos to scan for coordinates",
+                    Title = Tr("Select photos to scan for coordinates", "Pilih foto untuk dipindai koordinatnya"),
                     Filter = "Photos (*.jpg;*.jpeg)|*.jpg;*.jpeg",
                     Multiselect = true
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    PhotoOcrStatus = "Cancelled.";
+                    PhotoOcrStatus = Tr("Cancelled.", "Dibatalkan.");
                     return;
                 }
 
                 var project = Project.Current;
                 if (project == null)
                 {
-                    PhotoOcrStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    PhotoOcrStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
                 if (MapView.Active == null)
                 {
-                    PhotoOcrStatus = "No active map view. Open a map first.";
+                    PhotoOcrStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 var map = MapView.Active.Map;
@@ -120,11 +120,12 @@ namespace TreeCounterAddin
                     "tessdata");
                 if (!File.Exists(Path.Combine(tessdataPath, "eng.traineddata")))
                 {
-                    PhotoOcrStatus = "OCR language data missing from add-in install - reinstall the add-in.";
+                    PhotoOcrStatus = Tr("OCR language data missing from add-in install - reinstall the add-in.",
+                        "Data bahasa OCR hilang dari instalasi add-in - install ulang add-in-nya.");
                     return;
                 }
 
-                PhotoOcrStatus = $"Scanning {dialog.FileNames.Length} photo(s) with OCR...";
+                PhotoOcrStatus = Tr($"Scanning {dialog.FileNames.Length} photo(s) with OCR...", $"Memindai {dialog.FileNames.Length} foto dengan OCR...");
 
                 var expectUtm = IsUtmFormatSelected;
                 var defaultZone = OcrDefaultZone;
@@ -168,7 +169,7 @@ namespace TreeCounterAddin
                 var window = new OcrReviewWindow(rows);
                 if (window.ShowDialog() != true || window.ConfirmedRows.Count == 0)
                 {
-                    PhotoOcrStatus = "Cancelled - no points created.";
+                    PhotoOcrStatus = Tr("Cancelled - no points created.", "Dibatalkan - tidak ada titik dibuat.");
                     return;
                 }
 
@@ -205,7 +206,8 @@ namespace TreeCounterAddin
 
                     if (result.IsFailed)
                     {
-                        failures.Add($"WKID {group.Key}: {result.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}");
+                        failures.Add(Tr($"WKID {group.Key}: {result.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                            $"WKID {group.Key}: {result.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}"));
                         continue;
                     }
 
@@ -230,14 +232,15 @@ namespace TreeCounterAddin
                     totalPoints += group.Count();
                 }
 
-                var summary = createdLayers == 0
-                    ? "Failed to create any points."
-                    : $"Done: {totalPoints} point(s) created from confirmed OCR coordinates across {createdLayers} layer(s).";
-                PhotoOcrStatus = failures.Count == 0 ? summary : $"{summary} Failures: {string.Join("; ", failures)}";
+                var summary = Tr(
+                    createdLayers == 0 ? "Failed to create any points." : $"Done: {totalPoints} point(s) created from confirmed OCR coordinates across {createdLayers} layer(s).",
+                    createdLayers == 0 ? "Gagal membuat titik apa pun." : $"Selesai: {totalPoints} titik dibuat dari koordinat OCR yang dikonfirmasi di {createdLayers} layer.");
+                var failuresNote = Tr(" Failures: ", " Kegagalan: ");
+                PhotoOcrStatus = failures.Count == 0 ? summary : $"{summary}{failuresNote}{string.Join("; ", failures)}";
             }
             catch (Exception ex)
             {
-                PhotoOcrStatus = $"Unexpected error: {ex.Message}";
+                PhotoOcrStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

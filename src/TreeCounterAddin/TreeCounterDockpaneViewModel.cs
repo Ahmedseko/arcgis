@@ -91,6 +91,15 @@ namespace TreeCounterAddin
             LayersRemovedEvent.Subscribe(_ => OnLayersOrMapChanged());
         }
 
+        // Shared translation helper for every feature's status/progress/error messages
+        // (StatusText, LandClearingStatus, FishnetStatus, ...) - the dynamic counterpart to
+        // UiTextConverter.cs's static-label dictionary. These can't use that same
+        // dictionary-lookup approach since each message is a one-off runtime string (often
+        // interpolated with a count/name/measurement), not a fixed label reusable across
+        // call sites - so each call site supplies both language versions directly instead
+        // of a shared key.
+        internal string Tr(string en, string id) => IsHelpEnglish ? en : id;
+
         private async void OnLayersOrMapChanged() => await RefreshRasterLayersAsync();
 
         // See the constructor comment above - fired on every property change so ribbon

@@ -198,18 +198,18 @@ namespace TreeCounterAddin
         private async Task GenerateMissionAsync()
         {
             IsGeneratingMission = true;
-            FlightMissionStatus = "Generating flight plan...";
+            FlightMissionStatus = Tr("Generating flight plan...", "Membuat rencana terbang...");
             try
             {
                 if (MapView.Active == null)
                 {
-                    FlightMissionStatus = "No active map view. Open a map first.";
+                    FlightMissionStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 var project = Project.Current;
                 if (project == null)
                 {
-                    FlightMissionStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    FlightMissionStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
 
@@ -242,12 +242,13 @@ namespace TreeCounterAddin
                             FlightImageWidthPx, FlightImageHeightPx, FlightFrontOverlapPct, FlightSideOverlapPct,
                             FlightDirectionDeg, FlightSpeedMs, MaxFlightMinutesPerBattery, CrossHatch);
                     if (generated.Waypoints.Count == 0 && !CorridorMode)
-                        return (generated, "No waypoints generated. " +
+                        return (generated, Tr("No waypoints generated. ", "Tidak ada waypoint dibuat. ") +
                             FlightMissionMath.DescribeCoverageFailure(outer, FlightGsdCmPerPx, FlightImageWidthPx,
                                 FlightImageHeightPx, FlightFrontOverlapPct, FlightSideOverlapPct, FlightDirectionDeg));
                     if (generated.Waypoints.Count == 0)
-                        return (generated, "No waypoints generated - the centerline doesn't appear to run " +
-                            "through the survey polygon. Check both layers cover the same area.");
+                        return (generated, Tr(
+                            "No waypoints generated - the centerline doesn't appear to run through the survey polygon. Check both layers cover the same area.",
+                            "Tidak ada waypoint dibuat - centerline sepertinya tidak melewati poligon survei. Cek kedua layer mencakup area yang sama."));
                     return (generated, (string)null);
                 });
 
@@ -265,13 +266,13 @@ namespace TreeCounterAddin
                 var createOk = await CreateWaypointFeatureClassAsync(waypointsFc, sr);
                 if (!createOk)
                 {
-                    FlightMissionStatus = "Failed to create the waypoints feature class.";
+                    FlightMissionStatus = Tr("Failed to create the waypoints feature class.", "Gagal membuat feature class waypoint.");
                     return;
                 }
                 var createPathOk = await CreatePathFeatureClassAsync(pathFc, sr);
                 if (!createPathOk)
                 {
-                    FlightMissionStatus = "Failed to create the flight path feature class.";
+                    FlightMissionStatus = Tr("Failed to create the flight path feature class.", "Gagal membuat feature class jalur terbang.");
                     return;
                 }
 
@@ -297,19 +298,21 @@ namespace TreeCounterAddin
                 _lastFlightPlan = plan;
                 _lastFlightPlanSpatialReference = sr;
 
-                var warning = plan.OffPolygonLegCount > 0
-                    ? $" Heads up: {plan.OffPolygonLegCount} transit leg(s) may cut outside the survey " +
-                        "polygon near a concave/irregular part of its boundary - check the flight path " +
-                        "layer on the map before flying, and consider editing the polygon boundary to be " +
-                        "more precise there."
-                    : "";
-                FlightMissionStatus = $"Done: {plan.Waypoints.Count} waypoints, {plan.MissionPartCount} mission " +
-                    $"part(s) (~{plan.TotalFlightMinutes:F1} min flight time, {plan.TotalDistanceM / 1000.0:F2} km " +
-                    $"total). Pick an export format below and click Export Mission to save for your drone app.{warning}";
+                var warning = Tr(
+                    plan.OffPolygonLegCount > 0
+                        ? $" Heads up: {plan.OffPolygonLegCount} transit leg(s) may cut outside the survey polygon near a concave/irregular part of its boundary - check the flight path layer on the map before flying, and consider editing the polygon boundary to be more precise there."
+                        : "",
+                    plan.OffPolygonLegCount > 0
+                        ? $" Perhatian: {plan.OffPolygonLegCount} transit leg mungkin memotong keluar poligon survei di bagian batas yang cekung/tidak beraturan - cek layer jalur terbang di map sebelum terbang, dan pertimbangkan mengedit batas poligon supaya lebih presisi di situ."
+                        : "");
+                FlightMissionStatus = Tr(
+                    $"Done: {plan.Waypoints.Count} waypoints, {plan.MissionPartCount} mission part(s) (~{plan.TotalFlightMinutes:F1} min flight time, {plan.TotalDistanceM / 1000.0:F2} km total). Pick an export format below and click Export Mission to save for your drone app.",
+                    $"Selesai: {plan.Waypoints.Count} waypoint, {plan.MissionPartCount} bagian misi (~{plan.TotalFlightMinutes:F1} menit waktu terbang, total {plan.TotalDistanceM / 1000.0:F2} km). Pilih format export di bawah dan klik Export Mission untuk menyimpan sesuai aplikasi drone Anda.")
+                    + warning;
             }
             catch (Exception ex)
             {
-                FlightMissionStatus = $"Unexpected error: {ex.Message}";
+                FlightMissionStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {
@@ -323,14 +326,14 @@ namespace TreeCounterAddin
             List<IReadOnlyList<(double X, double Y)>> Holes, SpatialReference Sr, string Error)> ReadSurveyPolygonAsync()
         {
             if (MapView.Active == null)
-                return (null, null, null, "No active map view. Open a map first.");
+                return (null, null, null, Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu."));
 
             var map = MapView.Active.Map;
             var layer = await QueuedTask.Run(() =>
                 map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
                     .FirstOrDefault(l => l.Name == SelectedFlightPlanningLayer));
             if (layer == null)
-                return (null, null, null, "Layer not found - click Refresh and pick again.");
+                return (null, null, null, Tr("Layer not found - click Refresh and pick again.", "Layer tidak ditemukan - klik Refresh dan pilih lagi."));
 
             return await QueuedTask.Run(() =>
             {
@@ -347,9 +350,9 @@ namespace TreeCounterAddin
                 if (selection != null && selection.GetCount() > 0)
                 {
                     if (selection.GetCount() > 1)
-                        return (null, null, null, $"{selection.GetCount()} features are selected in " +
-                            $"\"{layer.Name}\" - Flight Mission Planner works on one survey area at a time. " +
-                            "Select just the one block/parcel you want and try again.");
+                        return (null, null, null, Tr(
+                            $"{selection.GetCount()} features are selected in \"{layer.Name}\" - Flight Mission Planner works on one survey area at a time. Select just the one block/parcel you want and try again.",
+                            $"{selection.GetCount()} fitur terpilih di \"{layer.Name}\" - Flight Mission Planner bekerja pada satu area survei per waktu. Pilih hanya satu blok/parsel yang diinginkan dan coba lagi."));
                     using var selCursor = selection.Search();
                     selCursor.MoveNext();
                     using var selFeature = (Feature)selCursor.Current;
@@ -359,11 +362,11 @@ namespace TreeCounterAddin
                 {
                     var total = featureClass.GetCount();
                     if (total == 0)
-                        return (null, null, null, "No features in the selected layer.");
+                        return (null, null, null, Tr("No features in the selected layer.", "Tidak ada fitur di layer yang dipilih."));
                     if (total > 1)
-                        return (null, null, null, $"\"{layer.Name}\" has {total} features and none is " +
-                            "selected - Flight Mission Planner works on one survey area at a time. Select " +
-                            "the specific parcel/block on the map and try again.");
+                        return (null, null, null, Tr(
+                            $"\"{layer.Name}\" has {total} features and none is selected - Flight Mission Planner works on one survey area at a time. Select the specific parcel/block on the map and try again.",
+                            $"\"{layer.Name}\" punya {total} fitur dan tidak ada yang dipilih - Flight Mission Planner bekerja pada satu area survei per waktu. Pilih parsel/blok tertentu di map dan coba lagi."));
                     using var cursor = featureClass.Search(null, false);
                     cursor.MoveNext();
                     using var onlyFeature = (Feature)cursor.Current;
@@ -371,10 +374,11 @@ namespace TreeCounterAddin
                 }
 
                 if (poly == null)
-                    return (null, null, null, "Selected feature isn't a polygon.");
+                    return (null, null, null, Tr("Selected feature isn't a polygon.", "Fitur terpilih bukan poligon."));
                 if (poly.SpatialReference == null || poly.SpatialReference.IsGeographic)
-                    return (null, null, null, "The layer must be in a projected coordinate system (meters) - " +
-                        "line spacing/direction are computed in real-world distance, not degrees.");
+                    return (null, null, null, Tr(
+                        "The layer must be in a projected coordinate system (meters) - line spacing/direction are computed in real-world distance, not degrees.",
+                        "Layer harus dalam sistem koordinat proyeksi (meter) - jarak/arah garis dihitung dalam jarak dunia-nyata, bukan derajat."));
 
                 // Every ring, biggest first - the biggest is the actual survey boundary, any
                 // smaller ones are holes (islands) to route around. Same "outer ring + hole
@@ -385,7 +389,7 @@ namespace TreeCounterAddin
                     .OrderByDescending(part => Math.Abs(SignedArea(part)))
                     .ToList();
                 if (rings.Count == 0)
-                    return (null, null, null, "Selected polygon has no usable rings.");
+                    return (null, null, null, Tr("Selected polygon has no usable rings.", "Poligon terpilih tidak punya ring yang bisa dipakai."));
 
                 var outer = (IReadOnlyList<(double X, double Y)>)rings[0];
                 var holes = rings.Skip(1).Select(r => (IReadOnlyList<(double X, double Y)>)r).ToList();
@@ -399,16 +403,16 @@ namespace TreeCounterAddin
         private async Task<(IReadOnlyList<(double X, double Y)> Centerline, string Error)> ReadCenterlineAsync()
         {
             if (MapView.Active == null)
-                return (null, "No active map view. Open a map first.");
+                return (null, Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu."));
             if (SelectedCorridorCenterlineLayer == null)
-                return (null, "Corridor mode needs a centerline layer - pick one above.");
+                return (null, Tr("Corridor mode needs a centerline layer - pick one above.", "Corridor mode butuh layer centerline - pilih satu di atas."));
 
             var map = MapView.Active.Map;
             var layer = await QueuedTask.Run(() =>
                 map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
                     .FirstOrDefault(l => l.Name == SelectedCorridorCenterlineLayer));
             if (layer == null)
-                return (null, "Centerline layer not found - click Refresh and pick again.");
+                return (null, Tr("Centerline layer not found - click Refresh and pick again.", "Layer centerline tidak ditemukan - klik Refresh dan pilih lagi."));
 
             return await QueuedTask.Run(() =>
             {
@@ -418,9 +422,9 @@ namespace TreeCounterAddin
                 if (selection != null && selection.GetCount() > 0)
                 {
                     if (selection.GetCount() > 1)
-                        return (null, $"{selection.GetCount()} features are selected in " +
-                            $"\"{layer.Name}\" - Corridor Mode follows one centerline at a time. Select " +
-                            "just the one you want and try again.");
+                        return (null, Tr(
+                            $"{selection.GetCount()} features are selected in \"{layer.Name}\" - Corridor Mode follows one centerline at a time. Select just the one you want and try again.",
+                            $"{selection.GetCount()} fitur terpilih di \"{layer.Name}\" - Corridor Mode mengikuti satu centerline per waktu. Pilih hanya satu yang diinginkan dan coba lagi."));
                     using var selCursor = selection.Search();
                     selCursor.MoveNext();
                     using var selFeature = (Feature)selCursor.Current;
@@ -430,11 +434,11 @@ namespace TreeCounterAddin
                 {
                     var total = featureClass.GetCount();
                     if (total == 0)
-                        return (null, "No features in the selected centerline layer.");
+                        return (null, Tr("No features in the selected centerline layer.", "Tidak ada fitur di layer centerline yang dipilih."));
                     if (total > 1)
-                        return (null, $"\"{layer.Name}\" has {total} features and none is selected - " +
-                            "Corridor Mode follows one centerline at a time. Select the specific line " +
-                            "on the map and try again.");
+                        return (null, Tr(
+                            $"\"{layer.Name}\" has {total} features and none is selected - Corridor Mode follows one centerline at a time. Select the specific line on the map and try again.",
+                            $"\"{layer.Name}\" punya {total} fitur dan tidak ada yang dipilih - Corridor Mode mengikuti satu centerline per waktu. Pilih garis tertentu di map dan coba lagi."));
                     using var cursor = featureClass.Search(null, false);
                     cursor.MoveNext();
                     using var onlyFeature = (Feature)cursor.Current;
@@ -442,9 +446,9 @@ namespace TreeCounterAddin
                 }
 
                 if (line == null)
-                    return (null, "Selected centerline feature isn't a line.");
+                    return (null, Tr("Selected centerline feature isn't a line.", "Fitur centerline terpilih bukan garis."));
                 if (line.SpatialReference == null || line.SpatialReference.IsGeographic)
-                    return (null, "The centerline layer must be in a projected coordinate system (meters).");
+                    return (null, Tr("The centerline layer must be in a projected coordinate system (meters).", "Layer centerline harus dalam sistem koordinat proyeksi (meter)."));
 
                 // Longest part only, if the line has several disconnected pieces - a corridor
                 // centerline should be one continuous path, and picking the longest is a safer
@@ -464,7 +468,7 @@ namespace TreeCounterAddin
                 }).ToList();
 
                 if (parts.Count == 0 || parts[0].Count < 2)
-                    return (null, "Selected centerline has no usable path.");
+                    return (null, Tr("Selected centerline has no usable path.", "Centerline terpilih tidak punya jalur yang bisa dipakai."));
 
                 return ((IReadOnlyList<(double X, double Y)>)parts[0], (string)null);
             });
@@ -491,7 +495,7 @@ namespace TreeCounterAddin
         // should never get silently overwritten by Generate Mission itself.
         private async Task SuggestDirectionAsync()
         {
-            FlightMissionStatus = "Analyzing polygon shape...";
+            FlightMissionStatus = Tr("Analyzing polygon shape...", "Menganalisis bentuk poligon...");
             try
             {
                 var (outer, _, _, error) = await ReadSurveyPolygonAsync();
@@ -504,17 +508,20 @@ namespace TreeCounterAddin
                 var suggestion = await QueuedTask.Run(() => FlightMissionMath.SuggestDirection(
                     outer, FlightGsdCmPerPx, FlightImageWidthPx, FlightSideOverlapPct, FlightDirectionDeg));
                 FlightDirectionDeg = suggestion.BestDegrees;
-                var comparison = suggestion.LinesAtCurrent > suggestion.LinesAtBest
-                    ? $"{suggestion.LinesAtBest} lines needed here vs {suggestion.LinesAtCurrent} at the " +
-                        $"previous {previousDeg}° - fewer, longer coverage lines."
-                    : $"{suggestion.LinesAtBest} lines needed - the previous {previousDeg}° was already this good.";
-                FlightMissionStatus = $"Tested all {suggestion.AnglesTested} possible compass angles against " +
-                    $"the survey polygon's actual shape. Best fit: {FlightDirectionDeg}° ({comparison}) " +
-                    "Click Generate Mission to use it.";
+                var comparison = Tr(
+                    suggestion.LinesAtCurrent > suggestion.LinesAtBest
+                        ? $"{suggestion.LinesAtBest} lines needed here vs {suggestion.LinesAtCurrent} at the previous {previousDeg}° - fewer, longer coverage lines."
+                        : $"{suggestion.LinesAtBest} lines needed - the previous {previousDeg}° was already this good.",
+                    suggestion.LinesAtCurrent > suggestion.LinesAtBest
+                        ? $"{suggestion.LinesAtBest} garis dibutuhkan di sini vs {suggestion.LinesAtCurrent} di {previousDeg}° sebelumnya - garis cakupan lebih sedikit dan panjang."
+                        : $"{suggestion.LinesAtBest} garis dibutuhkan - {previousDeg}° sebelumnya sudah cukup baik.");
+                FlightMissionStatus = Tr(
+                    $"Tested all {suggestion.AnglesTested} possible compass angles against the survey polygon's actual shape. Best fit: {FlightDirectionDeg}° ({comparison}) Click Generate Mission to use it.",
+                    $"Menguji semua {suggestion.AnglesTested} kemungkinan sudut kompas terhadap bentuk asli poligon survei. Paling pas: {FlightDirectionDeg}° ({comparison}) Klik Generate Mission untuk memakainya.");
             }
             catch (Exception ex)
             {
-                FlightMissionStatus = $"Unexpected error: {ex.Message}";
+                FlightMissionStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
         }
 
@@ -536,7 +543,7 @@ namespace TreeCounterAddin
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    FlightMissionStatus = "Export cancelled.";
+                    FlightMissionStatus = Tr("Export cancelled.", "Export dibatalkan.");
                     return;
                 }
 
@@ -593,23 +600,21 @@ namespace TreeCounterAddin
                     }
                 }
 
-                var formatNote = isKmz
-                    ? $"DJI Pilot 2 WPML mission for {SelectedDroneModel}, with a take-photo action set at " +
-                        "every waypoint. Review altitude/home point/RC-lost behavior inside DJI Pilot 2 " +
-                        "before flying, same as any imported mission."
-                    : "Litchi Mission Hub CSV format (latitude, longitude, altitude(m)) - import inside the " +
-                        "Litchi app, not DJI Fly/Pilot 2 (they don't take CSV directly). This file only has " +
-                        "the flight path - turn on photo capture in Litchi's own mission settings (e.g. " +
-                        "\"Take photos\" per waypoint, or a distance/time interval) before flying, since this " +
-                        "toolkit can't verify Litchi's per-waypoint action CSV columns without testing them " +
-                        "in the app first.";
-                FlightMissionStatus = $"Done: exported {_lastFlightPlan.Waypoints.Count} waypoints to " +
-                    $"{writtenFiles.Count} file(s) ({string.Join(", ", writtenFiles.Select(Path.GetFileName))}). " +
-                    formatNote;
+                var formatNote = Tr(
+                    isKmz
+                        ? $"DJI Pilot 2 WPML mission for {SelectedDroneModel}, with a take-photo action set at every waypoint. Review altitude/home point/RC-lost behavior inside DJI Pilot 2 before flying, same as any imported mission."
+                        : "Litchi Mission Hub CSV format (latitude, longitude, altitude(m)) - import inside the Litchi app, not DJI Fly/Pilot 2 (they don't take CSV directly). This file only has the flight path - turn on photo capture in Litchi's own mission settings (e.g. \"Take photos\" per waypoint, or a distance/time interval) before flying, since this toolkit can't verify Litchi's per-waypoint action CSV columns without testing them in the app first.",
+                    isKmz
+                        ? $"Misi WPML DJI Pilot 2 untuk {SelectedDroneModel}, dengan aksi take-photo diset di tiap waypoint. Cek ulang altitude/home point/perilaku RC-lost di dalam DJI Pilot 2 sebelum terbang, sama seperti misi impor lainnya."
+                        : "Format CSV Litchi Mission Hub (latitude, longitude, altitude(m)) - import di dalam aplikasi Litchi, bukan DJI Fly/Pilot 2 (mereka tidak menerima CSV langsung). File ini hanya berisi jalur terbang - aktifkan pengambilan foto di pengaturan misi Litchi sendiri (mis. \"Take photos\" per waypoint, atau interval jarak/waktu) sebelum terbang, karena toolkit ini tidak bisa memverifikasi kolom CSV aksi per-waypoint Litchi tanpa mengujinya di aplikasi dulu.");
+                FlightMissionStatus = Tr(
+                    $"Done: exported {_lastFlightPlan.Waypoints.Count} waypoints to {writtenFiles.Count} file(s) ({string.Join(", ", writtenFiles.Select(Path.GetFileName))}). ",
+                    $"Selesai: {_lastFlightPlan.Waypoints.Count} waypoint diekspor ke {writtenFiles.Count} file ({string.Join(", ", writtenFiles.Select(Path.GetFileName))}). ")
+                    + formatNote;
             }
             catch (Exception ex)
             {
-                FlightMissionStatus = $"Unexpected error exporting: {ex.Message}";
+                FlightMissionStatus = Tr($"Unexpected error exporting: {ex.Message}", $"Error tak terduga saat ekspor: {ex.Message}");
             }
         }
 

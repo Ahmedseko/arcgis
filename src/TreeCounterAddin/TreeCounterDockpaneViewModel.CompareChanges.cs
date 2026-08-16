@@ -60,23 +60,23 @@ namespace TreeCounterAddin
         private async Task CompareChangesAsync()
         {
             IsComparingChanges = true;
-            CompareChangesStatus = "Comparing...";
+            CompareChangesStatus = Tr("Comparing...", "Membandingkan...");
             try
             {
                 if (MapView.Active == null)
                 {
-                    CompareChangesStatus = "No active map view. Open a map first.";
+                    CompareChangesStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 if (SelectedCompareOldLayer == SelectedCompareNewLayer)
                 {
-                    CompareChangesStatus = "Pick two different point layers to compare.";
+                    CompareChangesStatus = Tr("Pick two different point layers to compare.", "Pilih dua layer titik yang berbeda untuk dibandingkan.");
                     return;
                 }
                 var project = Project.Current;
                 if (project == null)
                 {
-                    CompareChangesStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    CompareChangesStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
 
@@ -91,7 +91,7 @@ namespace TreeCounterAddin
 
                 if (oldPath == null || newPath == null)
                 {
-                    CompareChangesStatus = "Layer not found - click Refresh and pick layers again.";
+                    CompareChangesStatus = Tr("Layer not found - click Refresh and pick layers again.", "Layer tidak ditemukan - klik Refresh dan pilih layer lagi.");
                     return;
                 }
 
@@ -111,16 +111,17 @@ namespace TreeCounterAddin
                         AddComparePointLayer(map, result.LostFc, 200, 40, 40);
                         AddComparePointLayer(map, result.NewFc, 40, 180, 60);
                     });
-                    CompareChangesStatus = $"Done: {result.LostCount} lost, {result.NewCount} new, {result.MatchedCount} matched.";
+                    CompareChangesStatus = Tr($"Done: {result.LostCount} lost, {result.NewCount} new, {result.MatchedCount} matched.",
+                        $"Selesai: {result.LostCount} hilang, {result.NewCount} baru, {result.MatchedCount} cocok.");
                 }
                 else
                 {
-                    CompareChangesStatus = $"Failed: {result.ErrorMessage}";
+                    CompareChangesStatus = Tr($"Failed: {result.ErrorMessage}", $"Gagal: {result.ErrorMessage}");
                 }
             }
             catch (Exception ex)
             {
-                CompareChangesStatus = $"Unexpected error: {ex.Message}";
+                CompareChangesStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

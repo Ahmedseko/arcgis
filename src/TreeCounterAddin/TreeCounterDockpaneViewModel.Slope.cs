@@ -48,19 +48,19 @@ namespace TreeCounterAddin
         private async Task ComputeSlopeAsync()
         {
             IsComputingSlope = true;
-            SlopeStatus = "Computing slope...";
+            SlopeStatus = Tr("Computing slope...", "Menghitung kemiringan...");
             _slopeCts = new CancellationTokenSource();
             try
             {
                 var project = Project.Current;
                 if (project == null)
                 {
-                    SlopeStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    SlopeStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
                 if (MapView.Active == null)
                 {
-                    SlopeStatus = "No active map view. Open a map first.";
+                    SlopeStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
 
@@ -72,7 +72,8 @@ namespace TreeCounterAddin
                     LicenseInformation.GetExpirationDate(LicenseCodes.SpatialAnalyst) != null);
                 if (!hasSpatialAnalyst)
                 {
-                    SlopeStatus = "Spatial Analyst extension is not licensed - Slope needs it. Check ArcGIS Pro's licensing/extensions.";
+                    SlopeStatus = Tr("Spatial Analyst extension is not licensed - Slope needs it. Check ArcGIS Pro's licensing/extensions.",
+                        "Ekstensi Spatial Analyst tidak berlisensi - Slope membutuhkannya. Cek licensing/extensions ArcGIS Pro.");
                     return;
                 }
 
@@ -82,7 +83,7 @@ namespace TreeCounterAddin
                         .FirstOrDefault(l => l.Name == SelectedDemLayer));
                 if (demLayer == null)
                 {
-                    SlopeStatus = "DEM layer not found - click Refresh and pick again.";
+                    SlopeStatus = Tr("DEM layer not found - click Refresh and pick again.", "Layer DEM tidak ditemukan - klik Refresh dan pilih lagi.");
                     return;
                 }
 
@@ -90,7 +91,7 @@ namespace TreeCounterAddin
                     (demLayer.GetPath()?.LocalPath, demLayer.GetRaster()?.GetBandCount() ?? 0));
                 if (demPath == null)
                 {
-                    SlopeStatus = "Failed to read the DEM layer's data path.";
+                    SlopeStatus = Tr("Failed to read the DEM layer's data path.", "Gagal membaca path data layer DEM.");
                     return;
                 }
                 // A DEM is a single-band elevation surface (pixel value = meters of
@@ -101,8 +102,8 @@ namespace TreeCounterAddin
                 // shape) - this is a plain band-count check, not a real DEM validator.
                 if (bandCount > 1)
                 {
-                    SlopeStatus = $"\"{SelectedDemLayer}\" has {bandCount} bands - that's an RGB/multispectral image, not a DEM. " +
-                        "Pick a single-band elevation raster instead.";
+                    SlopeStatus = Tr($"\"{SelectedDemLayer}\" has {bandCount} bands - that's an RGB/multispectral image, not a DEM. Pick a single-band elevation raster instead.",
+                        $"\"{SelectedDemLayer}\" punya {bandCount} band - itu citra RGB/multispektral, bukan DEM. Pilih raster elevasi single-band.");
                     return;
                 }
 
@@ -114,7 +115,8 @@ namespace TreeCounterAddin
                     null, cancelToken: _slopeCts.Token, flags: GPExecuteToolFlags.RefreshProjectItems);
                 if (result.IsFailed)
                 {
-                    SlopeStatus = $"Failed to compute slope: {result.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    SlopeStatus = Tr($"Failed to compute slope: {result.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal menghitung kemiringan: {result.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
@@ -158,16 +160,17 @@ namespace TreeCounterAddin
                     slopeLayer.SetColorizer(colorizer);
                 });
 
-                SlopeStatus = "Done: slope raster (% rise) added to map, classified into accessibility bands " +
-                    "(green <=15%, yellow 15-25%, orange 25-40%, red >40%).";
+                SlopeStatus = Tr(
+                    "Done: slope raster (% rise) added to map, classified into accessibility bands (green <=15%, yellow 15-25%, orange 25-40%, red >40%).",
+                    "Selesai: raster kemiringan (% rise) ditambahkan ke map, diklasifikasikan ke pita aksesibilitas (hijau <=15%, kuning 15-25%, oranye 25-40%, merah >40%).");
             }
             catch (OperationCanceledException)
             {
-                SlopeStatus = "Cancelled.";
+                SlopeStatus = Tr("Cancelled.", "Dibatalkan.");
             }
             catch (Exception ex)
             {
-                SlopeStatus = $"Unexpected error: {ex.Message}";
+                SlopeStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

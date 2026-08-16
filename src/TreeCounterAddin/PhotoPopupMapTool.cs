@@ -89,7 +89,9 @@ namespace TreeCounterAddin
                 }
 
                 if (TreeCounterDockpaneViewModel.Instance is { } vm)
-                    vm.StatusText = found ? "Photo Popup: card shown." : "Photo Popup: no photo attachment found at that location.";
+                    vm.StatusText = found
+                        ? vm.Tr("Photo Popup: card shown.", "Photo Popup: kartu ditampilkan.")
+                        : vm.Tr("Photo Popup: no photo attachment found at that location.", "Photo Popup: tidak ada lampiran foto di lokasi itu.");
             });
         }
 

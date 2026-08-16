@@ -149,19 +149,19 @@ namespace TreeCounterAddin
         {
             IsDetectingLandClearing = true;
             LandClearingProgress = 0;
-            LandClearingStatus = "Scanning for cleared/bare ground...";
+            LandClearingStatus = Tr("Scanning for cleared/bare ground...", "Memindai bukaan/tanah terbuka...");
             _landClearingCts = new CancellationTokenSource();
             try
             {
                 if (MapView.Active == null)
                 {
-                    LandClearingStatus = "No active map view. Open a map first.";
+                    LandClearingStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 var project = Project.Current;
                 if (project == null)
                 {
-                    LandClearingStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    LandClearingStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
 
@@ -178,7 +178,8 @@ namespace TreeCounterAddin
 
                 if (rasterPath == null)
                 {
-                    LandClearingStatus = "Raster layer not found - click Refresh and pick a layer again.";
+                    LandClearingStatus = Tr("Raster layer not found - click Refresh and pick a layer again.",
+                        "Layer raster tidak ditemukan - klik Refresh dan pilih layer lagi.");
                     return;
                 }
 
@@ -207,7 +208,7 @@ namespace TreeCounterAddin
 
                 if (result.Cancelled)
                 {
-                    LandClearingStatus = "Cancelled.";
+                    LandClearingStatus = Tr("Cancelled.", "Dibatalkan.");
                 }
                 else if (result.Success)
                 {
@@ -224,20 +225,25 @@ namespace TreeCounterAddin
                     // comment for why (a silently-failed key looks identical to "AI found
                     // nothing wrong" without this).
                     var aiNote = aiEnabled
-                        ? $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)" : "";
-                    LandClearingStatus = (result.PolygonCount == 0
-                        ? "Done: no cleared/bare areas found above the minimum area."
-                        : $"Done: {result.PolygonCount} cleared area(s) found, {result.AreaHa:F2} ha total.") +
+                        ? Tr($" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)",
+                             $" (Divalidasi dengan {SelectedProvider} - {result.RejectedByAiCount} ditolak.)") : "";
+                    LandClearingStatus = Tr(
+                        result.PolygonCount == 0
+                            ? "Done: no cleared/bare areas found above the minimum area."
+                            : $"Done: {result.PolygonCount} cleared area(s) found, {result.AreaHa:F2} ha total.",
+                        result.PolygonCount == 0
+                            ? "Selesai: tidak ada area bukaan/terbuka di atas luas minimum."
+                            : $"Selesai: {result.PolygonCount} area bukaan ditemukan, total {result.AreaHa:F2} ha.") +
                         aiNote;
                 }
                 else
                 {
-                    LandClearingStatus = $"Failed: {result.ErrorMessage}";
+                    LandClearingStatus = Tr($"Failed: {result.ErrorMessage}", $"Gagal: {result.ErrorMessage}");
                 }
             }
             catch (Exception ex)
             {
-                LandClearingStatus = $"Unexpected error: {ex.Message}";
+                LandClearingStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

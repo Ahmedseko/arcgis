@@ -62,25 +62,25 @@ namespace TreeCounterAddin
         private async Task CreateFishnetAsync()
         {
             IsCreatingFishnet = true;
-            FishnetStatus = "Creating fishnet...";
+            FishnetStatus = Tr("Creating fishnet...", "Membuat fishnet...");
             _fishnetCts = new CancellationTokenSource();
             try
             {
                 if (MapView.Active == null)
                 {
-                    FishnetStatus = "No active map view. Open a map first.";
+                    FishnetStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 if (CellWidth <= 0 || CellHeight <= 0)
                 {
-                    FishnetStatus = "Cell size must be greater than 0.";
+                    FishnetStatus = Tr("Cell size must be greater than 0.", "Ukuran sel harus lebih besar dari 0.");
                     return;
                 }
 
                 var project = Project.Current;
                 if (project == null)
                 {
-                    FishnetStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    FishnetStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
 
@@ -90,7 +90,7 @@ namespace TreeCounterAddin
                         .FirstOrDefault(l => l.Name == SelectedPolygonLayer));
                 if (polyLayer == null)
                 {
-                    FishnetStatus = "Polygon layer not found - click Refresh and pick again.";
+                    FishnetStatus = Tr("Polygon layer not found - click Refresh and pick again.", "Layer poligon tidak ditemukan - klik Refresh dan pilih lagi.");
                     return;
                 }
 
@@ -98,7 +98,7 @@ namespace TreeCounterAddin
                     (polyLayer.GetPath()?.LocalPath, polyLayer.QueryExtent()));
                 if (polyPath == null || extent == null || extent.IsEmpty)
                 {
-                    FishnetStatus = "Failed to read the polygon layer's extent.";
+                    FishnetStatus = Tr("Failed to read the polygon layer's extent.", "Gagal membaca extent layer poligon.");
                     return;
                 }
 
@@ -145,7 +145,8 @@ namespace TreeCounterAddin
                     environments, cancelToken: _fishnetCts.Token, flags: GPExecuteToolFlags.RefreshProjectItems);
                 if (createResult.IsFailed)
                 {
-                    FishnetStatus = $"Failed to create fishnet: {createResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    FishnetStatus = Tr($"Failed to create fishnet: {createResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal membuat fishnet: {createResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
@@ -154,7 +155,8 @@ namespace TreeCounterAddin
                     environments, cancelToken: _fishnetCts.Token, flags: GPExecuteToolFlags.RefreshProjectItems);
                 if (clipResult.IsFailed)
                 {
-                    FishnetStatus = $"Failed to clip fishnet: {clipResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}";
+                    FishnetStatus = Tr($"Failed to clip fishnet: {clipResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(no details)"}",
+                        $"Gagal memotong fishnet: {clipResult.ErrorMessages?.FirstOrDefault()?.Text ?? "(tidak ada detail)"}");
                     return;
                 }
 
@@ -200,19 +202,24 @@ namespace TreeCounterAddin
                     return (count, totalArea / 10000.0);
                 });
 
-                FishnetStatus = $"Done: {cellCount} cells, {totalAreaHa:F2} ha total, clipped to \"{SelectedPolygonLayer}\"." +
-                    (cellIdAdded ? "" : " Note: Cell_ID field could not be added.") +
-                    (noCrsWarning ? " Warning: source polygon has no coordinate system defined - define its projection for accurate results." : "");
+                var cellIdNote = Tr(cellIdAdded ? "" : " Note: Cell_ID field could not be added.",
+                    cellIdAdded ? "" : " Catatan: field Cell_ID tidak bisa ditambahkan.");
+                var crsNote = Tr(
+                    noCrsWarning ? " Warning: source polygon has no coordinate system defined - define its projection for accurate results." : "",
+                    noCrsWarning ? " Peringatan: poligon sumber tidak punya sistem koordinat - definisikan proyeksinya untuk hasil yang akurat." : "");
+                FishnetStatus = Tr($"Done: {cellCount} cells, {totalAreaHa:F2} ha total, clipped to \"{SelectedPolygonLayer}\".",
+                    $"Selesai: {cellCount} sel, total {totalAreaHa:F2} ha, dipotong sesuai \"{SelectedPolygonLayer}\".") +
+                    cellIdNote + crsNote;
             }
             catch (OperationCanceledException)
             {
-                FishnetStatus = "Cancelled.";
+                FishnetStatus = Tr("Cancelled.", "Dibatalkan.");
             }
             catch (Exception ex)
             {
                 var logPath = Path.Combine(Path.GetTempPath(), "ForestryToolkit_fishnet_error.log");
                 File.WriteAllText(logPath, ex.ToString());
-                FishnetStatus = $"Unexpected error: {ex.Message} (full details: {logPath})";
+                FishnetStatus = Tr($"Unexpected error: {ex.Message} (full details: {logPath})", $"Error tak terduga: {ex.Message} (detail lengkap: {logPath})");
             }
             finally
             {

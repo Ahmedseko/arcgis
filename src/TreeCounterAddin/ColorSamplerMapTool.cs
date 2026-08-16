@@ -40,7 +40,8 @@ namespace TreeCounterAddin
             var (ok, r, g, b) = await vm.SamplePixelAsync(mapPoint.X, mapPoint.Y);
             if (!ok)
             {
-                vm.ColorSamplerStatus = "Clicked outside the raster (or worker not running) - no pixel there.";
+                vm.ColorSamplerStatus = vm.Tr("Clicked outside the raster (or worker not running) - no pixel there.",
+                    "Klik di luar raster (atau worker belum berjalan) - tidak ada piksel di situ.");
                 return;
             }
 

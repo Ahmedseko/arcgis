@@ -52,25 +52,25 @@ namespace TreeCounterAddin
             {
                 var dialog = new OpenFileDialog
                 {
-                    Title = "Select geotagged field photos",
+                    Title = Tr("Select geotagged field photos", "Pilih foto lapangan bergeotag"),
                     Filter = "Photos (*.jpg;*.jpeg)|*.jpg;*.jpeg|All files (*.*)|*.*",
                     Multiselect = true
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    PhotoImportStatus = "Cancelled.";
+                    PhotoImportStatus = Tr("Cancelled.", "Dibatalkan.");
                     return;
                 }
 
                 var project = Project.Current;
                 if (project == null)
                 {
-                    PhotoImportStatus = "No open ArcGIS Pro project. Create or open one first.";
+                    PhotoImportStatus = Tr("No open ArcGIS Pro project. Create or open one first.", "Tidak ada project ArcGIS Pro yang terbuka. Buat atau buka satu dulu.");
                     return;
                 }
                 if (MapView.Active == null)
                 {
-                    PhotoImportStatus = "No active map view. Open a map first.";
+                    PhotoImportStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu.");
                     return;
                 }
                 var map = MapView.Active.Map;
@@ -83,7 +83,7 @@ namespace TreeCounterAddin
 
                 var outputFc = Path.Combine(project.DefaultGeodatabasePath, $"FieldPhotos_{stamp}");
 
-                PhotoImportStatus = "Reading photo GPS tags...";
+                PhotoImportStatus = Tr("Reading photo GPS tags...", "Membaca tag GPS foto...");
 
                 var result = await Geoprocessing.ExecuteToolAsync("management.GeotagPhotos",
                     Geoprocessing.MakeValueArray(stagingDir, outputFc),
@@ -97,8 +97,9 @@ namespace TreeCounterAddin
                     // fallback so the real reason still surfaces instead of "(no details)".
                     var detail = result.ErrorMessages?.FirstOrDefault()?.Text
                         ?? result.Messages?.FirstOrDefault()?.Text
-                        ?? "no GP message returned - most likely none of the selected photos have GPS EXIF data";
-                    PhotoImportStatus = $"Failed to geotag photos: {detail}";
+                        ?? Tr("no GP message returned - most likely none of the selected photos have GPS EXIF data",
+                              "tidak ada pesan GP - kemungkinan besar tidak ada foto yang dipilih punya data GPS EXIF");
+                    PhotoImportStatus = Tr($"Failed to geotag photos: {detail}", $"Gagal geotag foto: {detail}");
                     return;
                 }
 
@@ -119,15 +120,16 @@ namespace TreeCounterAddin
                     return featureClass.GetCount();
                 });
 
-                PhotoImportStatus = $"Done: {count} geotagged photo(s) added with attachments - click a point on the map to view its photo.";
+                PhotoImportStatus = Tr($"Done: {count} geotagged photo(s) added with attachments - click a point on the map to view its photo.",
+                    $"Selesai: {count} foto bergeotag ditambahkan dengan lampiran - klik titik di map untuk melihat fotonya.");
             }
             catch (OperationCanceledException)
             {
-                PhotoImportStatus = "Cancelled.";
+                PhotoImportStatus = Tr("Cancelled.", "Dibatalkan.");
             }
             catch (Exception ex)
             {
-                PhotoImportStatus = $"Unexpected error: {ex.Message}";
+                PhotoImportStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
             finally
             {

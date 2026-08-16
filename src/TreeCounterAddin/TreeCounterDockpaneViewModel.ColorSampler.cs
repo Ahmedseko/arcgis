@@ -126,7 +126,7 @@ namespace TreeCounterAddin
         {
             try
             {
-                if (MapView.Active == null) { ColorSamplerStatus = "No active map view. Open a map first."; return; }
+                if (MapView.Active == null) { ColorSamplerStatus = Tr("No active map view. Open a map first.", "Tidak ada map view aktif. Buka map dulu."); return; }
 
                 var map = MapView.Active.Map;
                 var rasterPath = await QueuedTask.Run(() =>
@@ -134,7 +134,8 @@ namespace TreeCounterAddin
                         .FirstOrDefault(l => l.Name == SelectedColorSamplerRasterLayer)?.GetPath()?.LocalPath);
                 if (rasterPath == null)
                 {
-                    ColorSamplerStatus = "Raster layer not found - click Refresh and pick a layer again.";
+                    ColorSamplerStatus = Tr("Raster layer not found - click Refresh and pick a layer again.",
+                        "Layer raster tidak ditemukan - klik Refresh dan pilih layer lagi.");
                     return;
                 }
 
@@ -145,11 +146,12 @@ namespace TreeCounterAddin
 
                 await FrameworkApplication.SetCurrentToolAsync("TreeCounterAddin_ColorSamplerTool");
                 IsColorSampling = true;
-                ColorSamplerStatus = $"Sampling active - category '{SelectedSampleCategory}' - click on the raster to add points. 0 sample(s) so far.";
+                ColorSamplerStatus = Tr($"Sampling active - category '{SelectedSampleCategory}' - click on the raster to add points. 0 sample(s) so far.",
+                    $"Sampling aktif - kategori '{SelectedSampleCategory}' - klik pada raster untuk menambah titik. 0 sampel sejauh ini.");
             }
             catch (Exception ex)
             {
-                ColorSamplerStatus = $"Unexpected error: {ex.Message}";
+                ColorSamplerStatus = Tr($"Unexpected error: {ex.Message}", $"Error tak terduga: {ex.Message}");
             }
         }
 
@@ -162,18 +164,19 @@ namespace TreeCounterAddin
 
             if (_pendingColorSamples.Count == 0)
             {
-                ColorSamplerStatus = "Stopped - no samples were taken.";
+                ColorSamplerStatus = Tr("Stopped - no samples were taken.", "Dihentikan - tidak ada sampel yang diambil.");
                 return;
             }
 
             var project = Project.Current;
-            if (project == null) { ColorSamplerStatus = "No open ArcGIS Pro project - samples weren't saved."; return; }
+            if (project == null) { ColorSamplerStatus = Tr("No open ArcGIS Pro project - samples weren't saved.",
+                "Tidak ada project ArcGIS Pro yang terbuka - sampel tidak tersimpan."); return; }
 
             var map = MapView.Active?.Map;
             var rasterPath = _colorSamplerRasterPath;
             if (rasterPath == null)
             {
-                ColorSamplerStatus = "Raster path lost - samples weren't saved.";
+                ColorSamplerStatus = Tr("Raster path lost - samples weren't saved.", "Path raster hilang - sampel tidak tersimpan.");
                 return;
             }
 
@@ -182,12 +185,12 @@ namespace TreeCounterAddin
             var outputFc = Path.Combine(project.DefaultGeodatabasePath, $"ColorReference_{categorySlug}_{stamp}");
             var samples = _pendingColorSamples.ToList();
 
-            ColorSamplerStatus = $"Saving {samples.Count} sample(s)...";
+            ColorSamplerStatus = Tr($"Saving {samples.Count} sample(s)...", $"Menyimpan {samples.Count} sampel...");
             var result = await PythonBackendService.SaveColorSamplesAsync(rasterPath, outputFc, samples);
 
             if (!result.Success)
             {
-                ColorSamplerStatus = $"Failed to save samples: {result.ErrorMessage}";
+                ColorSamplerStatus = Tr($"Failed to save samples: {result.ErrorMessage}", $"Gagal menyimpan sampel: {result.ErrorMessage}");
                 return;
             }
 
@@ -202,7 +205,8 @@ namespace TreeCounterAddin
             });
 
             _pendingColorSamples.Clear();
-            ColorSamplerStatus = $"Saved {result.Count} sample(s) to {Path.GetFileName(result.OutputFc)}. Fill in Label/Class in its Attribute Table.";
+            ColorSamplerStatus = Tr($"Saved {result.Count} sample(s) to {Path.GetFileName(result.OutputFc)}. Fill in Label/Class in its Attribute Table.",
+                $"Tersimpan {result.Count} sampel ke {Path.GetFileName(result.OutputFc)}. Isi Label/Class di Attribute Table-nya.");
         }
 
         // Called from ColorSamplerMapTool.HandleMouseDownAsync. Round-trips one request to
@@ -238,8 +242,9 @@ namespace TreeCounterAddin
         internal void AddColorSample(double mapX, double mapY, int r, int g, int b, double exgValue)
         {
             _pendingColorSamples.Add(new ColorSample(mapX, mapY, r, g, b, exgValue, SelectedSampleCategory ?? ""));
-            ColorSamplerStatus = $"Sampling active - category '{SelectedSampleCategory}' - {_pendingColorSamples.Count} sample(s) so far. " +
-                $"Last: RGB({r},{g},{b}), ExG {(exgValue >= 0 ? "+" : "")}{exgValue:F0}.";
+            ColorSamplerStatus = Tr(
+                $"Sampling active - category '{SelectedSampleCategory}' - {_pendingColorSamples.Count} sample(s) so far. Last: RGB({r},{g},{b}), ExG {(exgValue >= 0 ? "+" : "")}{exgValue:F0}.",
+                $"Sampling aktif - kategori '{SelectedSampleCategory}' - {_pendingColorSamples.Count} sampel sejauh ini. Terakhir: RGB({r},{g},{b}), ExG {(exgValue >= 0 ? "+" : "")}{exgValue:F0}.");
         }
 
         // Feature class names can't hold spaces/slashes/etc - strips down to alphanumerics
