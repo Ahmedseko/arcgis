@@ -687,7 +687,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Optional - confirms Tree Detection and Land Clearing results via Gemini, OpenAI, or Claude."
+                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Optional - confirms Tree Detection, Land Clearing, and Road Extraction results via Gemini, OpenAI, or Claude."
                                            TextWrapping="Wrap" Margin="0,0,0,6" FontSize="11" Foreground="Gray"/>
                                 <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Content="Enable AI Vision Validation"
                                           IsChecked="{Binding UseAiValidation}" Margin="0,0,0,6"

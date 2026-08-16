@@ -96,8 +96,15 @@ namespace TreeCounterAddin
                 var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 var outputFc = Path.Combine(project.DefaultGeodatabasePath, $"Roads_{stamp}");
 
+                // Provider/ApiKey/Model/UseAiValidation are the same shared Settings-tab AI
+                // Vision Validation fields Tree Detection/Land Clearing use - see
+                // TreeDetection.cs.
+                var aiEnabled = UseAiValidation && !string.IsNullOrWhiteSpace(ApiKey);
                 var request = new RoadExtractionRequest(
-                    rasterPath, outputFc, ROAD_EXG_THRESHOLD, DEFAULT_SMOOTH_PX, MinDangleM);
+                    rasterPath, outputFc, ROAD_EXG_THRESHOLD, DEFAULT_SMOOTH_PX, MinDangleM,
+                    Provider: aiEnabled ? SelectedProvider.ToLowerInvariant() : null,
+                    ApiKey: aiEnabled ? ApiKey : null,
+                    Model: aiEnabled ? SelectedModel : null);
 
                 var dispatcher = System.Windows.Application.Current.Dispatcher;
                 var result = await PythonBackendService.RunRoadExtractionAsync(
@@ -120,9 +127,14 @@ namespace TreeCounterAddin
                             ColorFactory.Instance.CreateRGBColor(240, 200, 40), 2.0);
                         newLayer.SetRenderer(new CIMSimpleRenderer { Symbol = symbol.MakeSymbolReference() });
                     });
-                    RoadExtractionStatus = result.LineCount == 0
+                    // Same explicit-even-at-zero AI confirmation as Tree Detection/Land
+                    // Clearing - see TreeDetection.cs's comment for why.
+                    var aiNote = aiEnabled
+                        ? $" (Validated with {SelectedProvider} - {result.RejectedByAiCount} rejected.)" : "";
+                    RoadExtractionStatus = (result.LineCount == 0
                         ? "Done: no road/trail centerlines found."
-                        : $"Done: {result.LineCount} segment(s) found, {result.LengthKm:F2} km total.";
+                        : $"Done: {result.LineCount} segment(s) found, {result.LengthKm:F2} km total.") +
+                        aiNote;
                 }
                 else
                 {

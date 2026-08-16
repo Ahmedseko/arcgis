@@ -49,6 +49,17 @@ _PROMPTS = {
         'gap between two separate crowns with no crown structure at the crosshair. '
         'Reply format - one line: 1:Y 2:N 3:Y ...'
     ),
+    'road': (
+        'You are analyzing {n} aerial drone images (top-down, ~3-5 cm/px) of tropical forest/plantation. '
+        'Each image is a crop centered on one candidate road/trail centerline segment flagged by a '
+        'color-threshold algorithm (a red crosshair marks its center) - the crop shows the segment '
+        'plus some surrounding context. '
+        'Reply Y if the crosshair sits on or very near an actual road, track, or trail - a linear '
+        'bare/compacted-ground feature used for vehicle or foot travel. '
+        'Reply N if it is actually a false positive: a river/stream, a drainage line/shadow between '
+        'canopy gaps, or a wide cleared yard/pit edge that is not a linear travel route. '
+        'Reply format - one line: 1:Y 2:N 3:Y ...'
+    ),
     'clearing': (
         'You are analyzing {n} aerial drone images (top-down, ~3-5 cm/px) of tropical forest/plantation. '
         'Each image is a crop centered on one candidate cleared/bare-ground area flagged by a '

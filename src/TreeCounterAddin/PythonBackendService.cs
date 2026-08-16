@@ -23,9 +23,10 @@ namespace TreeCounterAddin
     internal record LandClearingResult(bool Success, bool Cancelled, int PolygonCount, string OutputFc, string ErrorMessage, double AreaHa = 0, int RejectedByAiCount = 0);
 
     internal record RoadExtractionRequest(
-        string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinDangleM);
+        string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinDangleM,
+        string Provider = null, string ApiKey = null, string Model = null);
 
-    internal record RoadExtractionResult(bool Success, bool Cancelled, int LineCount, string OutputFc, string ErrorMessage, double LengthKm = 0);
+    internal record RoadExtractionResult(bool Success, bool Cancelled, int LineCount, string OutputFc, string ErrorMessage, double LengthKm = 0, int RejectedByAiCount = 0);
 
     internal record CompareChangesRequest(
         string OldFc, string NewFc, string OutputLostFc, string OutputNewFc, double MaxDistM);
@@ -290,6 +291,15 @@ namespace TreeCounterAddin
             psi.ArgumentList.Add("--exg-threshold"); psi.ArgumentList.Add(request.ExgThreshold.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--smooth-px"); psi.ArgumentList.Add(request.SmoothPx.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--min-dangle-m"); psi.ArgumentList.Add(request.MinDangleM.ToString(CultureInfo.InvariantCulture));
+            if (!string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                psi.ArgumentList.Add("--ai-provider"); psi.ArgumentList.Add(request.Provider ?? "gemini");
+                psi.ArgumentList.Add("--api-key"); psi.ArgumentList.Add(request.ApiKey);
+                if (!string.IsNullOrWhiteSpace(request.Model))
+                {
+                    psi.ArgumentList.Add("--ai-model"); psi.ArgumentList.Add(request.Model);
+                }
+            }
 
             try
             {
@@ -333,7 +343,8 @@ namespace TreeCounterAddin
                     root.GetProperty("line_count").GetInt32(),
                     root.GetProperty("output_fc").GetString(),
                     null,
-                    root.GetProperty("length_km").GetDouble());
+                    root.GetProperty("length_km").GetDouble(),
+                    root.TryGetProperty("rejected_by_ai_count", out var rc) ? rc.GetInt32() : 0);
             }
             catch (Exception ex)
             {
