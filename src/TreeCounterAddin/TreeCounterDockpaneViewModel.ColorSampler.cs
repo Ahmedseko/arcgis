@@ -178,7 +178,8 @@ namespace TreeCounterAddin
             }
 
             var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var outputFc = Path.Combine(project.DefaultGeodatabasePath, $"ColorReference_{stamp}");
+            var categorySlug = SanitizeForFcName(SelectedSampleCategory);
+            var outputFc = Path.Combine(project.DefaultGeodatabasePath, $"ColorReference_{categorySlug}_{stamp}");
             var samples = _pendingColorSamples.ToList();
 
             ColorSamplerStatus = $"Saving {samples.Count} sample(s)...";
@@ -239,6 +240,16 @@ namespace TreeCounterAddin
             _pendingColorSamples.Add(new ColorSample(mapX, mapY, r, g, b, exgValue, SelectedSampleCategory ?? ""));
             ColorSamplerStatus = $"Sampling active - category '{SelectedSampleCategory}' - {_pendingColorSamples.Count} sample(s) so far. " +
                 $"Last: RGB({r},{g},{b}), ExG {(exgValue >= 0 ? "+" : "")}{exgValue:F0}.";
+        }
+
+        // Feature class names can't hold spaces/slashes/etc - strips down to alphanumerics
+        // only, in whichever language the category happened to be selected in (no forced
+        // English translation - matches the category itself, just filesystem/gdb-safe).
+        private static string SanitizeForFcName(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "Uncategorized";
+            var sanitized = new string(text.Where(char.IsLetterOrDigit).ToArray());
+            return sanitized.Length > 0 ? sanitized : "Uncategorized";
         }
 
         private void StopPixelSampleWorker()

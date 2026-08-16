@@ -9,6 +9,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <local:BilingualTooltipConverter x:Key="BilingualTooltip"/>
+        <local:InverseBooleanConverter x:Key="InverseBool"/>
 
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,0,0,2"/>
@@ -397,11 +398,13 @@
                                            Style="{StaticResource HintLine}"/>
 
                                 <TextBlock Text="Raster layer" Style="{StaticResource FieldLabel}"/>
-                                <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedColorSamplerRasterLayer}" Margin="0,0,0,8"/>
+                                <ComboBox ItemsSource="{Binding RasterLayers}" SelectedItem="{Binding SelectedColorSamplerRasterLayer}" Margin="0,0,0,8"
+                                          IsEnabled="{Binding IsColorSampling, Converter={StaticResource InverseBool}}"/>
 
-                                <TextBlock Text="Category (tagged on every click until changed)" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="Category (one per session - Stop Sampling to switch)" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding SampleCategories}" Text="{Binding SelectedSampleCategory, UpdateSourceTrigger=PropertyChanged}"
-                                          IsEditable="True" Margin="0,0,0,8"/>
+                                          IsEditable="True" Margin="0,0,0,8"
+                                          IsEnabled="{Binding IsColorSampling, Converter={StaticResource InverseBool}}"/>
 
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="Start Sampling" Command="{Binding StartColorSamplingCommand}" Style="{StaticResource ActionButton}"/>
