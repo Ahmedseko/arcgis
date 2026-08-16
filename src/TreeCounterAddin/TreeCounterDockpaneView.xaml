@@ -656,6 +656,9 @@
                                                ToolTip="Fills small gaps and merges nearby fragments into one shape - raise for smoother, more human-digitization-like boundaries instead of many small blobs."/>
                                     <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding LandClearingClosingIterations}" Margin="0,2"/>
                                 </Grid>
+                                <TextBlock Text="Fill holes ≤ (m²)" Margin="0,6,0,0"
+                                           ToolTip="Fills small interior holes (vegetation patches left standing inside an otherwise-cleared area) so the result is one solid polygon like manual digitization - large real forest islands are left alone. 0 = don't fill. Matches the original QGIS plugin's own default."/>
+                                <TextBox Text="{Binding LandClearingFillHoleAreaM2}" Margin="0,2" HorizontalAlignment="Left" Width="100"/>
                                 <CheckBox Content="Fresh color filter (also require bright + reddish soil - excludes roads/rivers)"
                                           IsChecked="{Binding LandClearingFreshColor}" Margin="0,6,0,2"/>
                                 <Grid Visibility="{Binding LandClearingFreshColor, Converter={StaticResource BoolToVis}}" Margin="0,2,0,0">

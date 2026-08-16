@@ -105,6 +105,19 @@ namespace TreeCounterAddin
             set => SetProperty(ref _landClearingBrightMin, value);
         }
 
+        // Fills small interior holes (vegetation patches left standing inside an otherwise-
+        // cleared area) at the vector level, after RasterToPolygon - the missing piece found
+        // 2026-08-16 comparing this port against the original QGIS plugin's "Isi lubang"
+        // control (same 2000 m2 default), which is what actually gives QGIS's result its
+        // solid, human-digitization look regardless of site, more than the pixel-level
+        // opening/closing above does on its own.
+        private double _landClearingFillHoleAreaM2 = 2000;
+        public double LandClearingFillHoleAreaM2
+        {
+            get => _landClearingFillHoleAreaM2;
+            set => SetProperty(ref _landClearingFillHoleAreaM2, value);
+        }
+
         private bool _isDetectingLandClearing;
         public bool IsDetectingLandClearing
         {
@@ -176,7 +189,7 @@ namespace TreeCounterAddin
                     rasterPath, outputFc, LandClearingExgThreshold, LandClearingSmoothPx,
                     MinClearingAreaHa * 10000.0, excludeFcPath,
                     LandClearingOpeningIterations, LandClearingClosingIterations,
-                    LandClearingFreshColor, LandClearingBrightMin);
+                    LandClearingFreshColor, LandClearingBrightMin, LandClearingFillHoleAreaM2);
 
                 var dispatcher = System.Windows.Application.Current.Dispatcher;
                 var result = await PythonBackendService.RunLandClearingAsync(

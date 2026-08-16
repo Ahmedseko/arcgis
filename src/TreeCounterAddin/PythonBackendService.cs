@@ -17,7 +17,8 @@ namespace TreeCounterAddin
 
     internal record LandClearingRequest(
         string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinAreaM2, string ExcludeFc = null,
-        int OpeningIterations = 6, int ClosingIterations = 15, bool FreshColor = false, double BrightMin = 120.0);
+        int OpeningIterations = 6, int ClosingIterations = 15, bool FreshColor = false, double BrightMin = 120.0,
+        double FillHoleAreaM2 = 2000.0);
 
     internal record LandClearingResult(bool Success, bool Cancelled, int PolygonCount, string OutputFc, string ErrorMessage, double AreaHa = 0);
 
@@ -185,6 +186,7 @@ namespace TreeCounterAddin
             psi.ArgumentList.Add("--opening-iterations"); psi.ArgumentList.Add(request.OpeningIterations.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--closing-iterations"); psi.ArgumentList.Add(request.ClosingIterations.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--min-area-m2"); psi.ArgumentList.Add(request.MinAreaM2.ToString(CultureInfo.InvariantCulture));
+            psi.ArgumentList.Add("--fill-hole-area-m2"); psi.ArgumentList.Add(request.FillHoleAreaM2.ToString(CultureInfo.InvariantCulture));
             if (request.FreshColor)
             {
                 psi.ArgumentList.Add("--fresh-color");
