@@ -1,8 +1,5 @@
-using ArcGIS.Core.Data.Raster;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
-using System;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
@@ -10,16 +7,15 @@ namespace TreeCounterAddin
 {
     // Ribbon-registered (Config.daml), dockpane-activated (TreeCounterDockpaneViewModel.
     // ColorSampler.cs's StartColorSamplingCommand calls FrameworkApplication.SetCurrentToolAsync)
-    // map tool: each click reads the RGB pixel directly under the cursor from the selected
-    // raster layer and adds it as a labeled point to a reference feature class, so ExG
-    // thresholds can be calibrated against real sampled colors instead of eyeballed
-    // screenshots (real report, 2026-08-16).
+    // map tool: each click asks the running pixel-sample worker process (started in
+    // StartColorSamplingAsync, see its own comment) for the RGB pixel under the cursor and
+    // adds it as a buffered sample, for calibrating ExG thresholds against real sampled
+    // colors instead of eyeballed screenshots (real report, 2026-08-16).
     //
-    // Reads the pixel directly in C# (ArcGIS.Core.Data.Raster.Raster.MapToPixel +
-    // GetPixelValue - same pattern as Esri's own CustomRasterIdentify sample) rather than
-    // shelling out to Python per click like every other raster operation in this add-in -
-    // a subprocess launch (~1-2s, mostly arcpy import) per click would make rapid
-    // successive sampling unusably laggy; this needs to feel instant.
+    // Only ever touches the map to get the click's coordinates - no ArcGIS.Core.Data.Raster
+    // access here at all. An earlier version read the pixel directly via Raster.MapToPixel/
+    // GetPixelValue and crashed ArcGIS Pro outright on the very first click; see
+    // TreeCounterDockpaneViewModel.ColorSampler.cs's comment for why.
     internal class ColorSamplerMapTool : MapTool
     {
         public ColorSamplerMapTool()
@@ -33,47 +29,23 @@ namespace TreeCounterAddin
                 e.Handled = true;
         }
 
-        protected override Task HandleMouseDownAsync(MapViewMouseButtonEventArgs e)
+        protected override async Task HandleMouseDownAsync(MapViewMouseButtonEventArgs e)
         {
-            return QueuedTask.Run(() =>
+            var mapView = MapView.Active;
+            var vm = TreeCounterDockpaneViewModel.Instance;
+            if (mapView == null || vm == null) return;
+
+            var mapPoint = await QueuedTask.Run(() => mapView.ClientToMap(e.ClientPoint));
+
+            var (ok, r, g, b) = await vm.SamplePixelAsync(mapPoint.X, mapPoint.Y);
+            if (!ok)
             {
-                var mapView = MapView.Active;
-                var vm = TreeCounterDockpaneViewModel.Instance;
-                if (mapView == null || vm == null) return;
+                vm.ColorSamplerStatus = "Clicked outside the raster (or worker not running) - no pixel there.";
+                return;
+            }
 
-                var rasterLayer = mapView.Map.GetLayersAsFlattenedList()
-                    .OfType<RasterLayer>()
-                    .FirstOrDefault(l => l.Name == vm.SelectedColorSamplerRasterLayer);
-                if (rasterLayer == null)
-                {
-                    vm.ColorSamplerStatus = "Raster layer not found - pick one and click Start Sampling again.";
-                    return;
-                }
-
-                var mapPoint = mapView.ClientToMap(e.ClientPoint);
-
-                using var raster = rasterLayer.GetRaster();
-                // Tells the raster to expect incoming coordinates in the map's own spatial
-                // reference (same as Esri's CustomRasterIdentify sample) - without this,
-                // MapToPixel silently misreads whenever the raster's stored SR differs from
-                // whatever the map view happens to be displayed in.
-                raster.SetSpatialReference(mapView.Map.SpatialReference);
-
-                var (row, col) = raster.MapToPixel(mapPoint.X, mapPoint.Y);
-                if (row < 0 || col < 0 || row >= raster.GetHeight() || col >= raster.GetWidth())
-                {
-                    vm.ColorSamplerStatus = "Clicked outside the raster - no pixel there.";
-                    return;
-                }
-
-                var bandCount = raster.GetBandCount();
-                var r = Convert.ToInt32(raster.GetPixelValue(0, row, col));
-                var g = Convert.ToInt32(raster.GetPixelValue(1, row, col));
-                var b = bandCount > 2 ? Convert.ToInt32(raster.GetPixelValue(2, row, col)) : 0;
-                var exgValue = 2.0 * g - r - b;
-
-                vm.AddColorSample(mapPoint.X, mapPoint.Y, r, g, b, exgValue);
-            });
+            var exgValue = 2.0 * g - r - b;
+            vm.AddColorSample(mapPoint.X, mapPoint.Y, r, g, b, exgValue);
         }
     }
 }

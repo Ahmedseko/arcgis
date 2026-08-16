@@ -64,6 +64,7 @@ namespace TreeCounterAddin
         private static readonly string CheckApiKeyScript = Path.Combine(BackendDir, "check_api_key.py");
         private static readonly string CompareDetectionsScript = Path.Combine(BackendDir, "compare_detections.py");
         private static readonly string SaveColorSamplesScript = Path.Combine(BackendDir, "save_color_samples.py");
+        private static readonly string PixelSampleServerScript = Path.Combine(BackendDir, "pixel_sample_server.py");
 
         public static async Task<DetectionResult> RunDetectionAsync(
             DetectionRequest request, Action<int> onProgress = null, Action<string> onStage = null,
@@ -494,6 +495,35 @@ namespace TreeCounterAddin
                 try { File.Delete(samplesJsonPath); } catch { /* best effort */ }
                 try { File.Delete(summaryPath); } catch { /* best effort */ }
             }
+        }
+
+        // Starts backend/pixel_sample_server.py as a long-lived worker (stdin/stdout line
+        // protocol, see that script's own comment for why this exists as a standing
+        // process instead of one-shot calls) - caller owns the returned Process: write
+        // "x,y\n" to StandardInput, read one reply line from StandardOutput per request,
+        // and close StandardInput (or Kill) to end it. Not wrapped in a Task since starting
+        // a process is synchronous/cheap - only per-request I/O needs to be awaited, done
+        // by the caller directly against the returned Process's own streams.
+        public static Process StartPixelSampleWorker(string rasterPath)
+        {
+            var pythonExe = File.Exists(ProPythonExe) ? ProPythonExe : "python";
+            var scriptPath = Path.GetFullPath(PixelSampleServerScript);
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = pythonExe,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            psi.ArgumentList.Add(scriptPath);
+            psi.ArgumentList.Add("--raster"); psi.ArgumentList.Add(rasterPath);
+
+            var process = new Process { StartInfo = psi };
+            process.Start();
+            return process;
         }
 
         // Raster-free round trip via backend/check_api_key.py, for the "Test Key" button -
