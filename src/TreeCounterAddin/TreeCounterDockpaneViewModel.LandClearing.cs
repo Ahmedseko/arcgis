@@ -185,11 +185,17 @@ namespace TreeCounterAddin
                 var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 var outputFc = Path.Combine(project.DefaultGeodatabasePath, $"LandClearing_{stamp}");
 
+                // Provider/ApiKey/Model are the same Settings-tab AI Vision Validation fields
+                // Tree Detection uses (TreeCounterDockpaneViewModel.TreeDetection.cs) - shared
+                // across both features, same "on automatically once a key is entered" UX.
                 var request = new LandClearingRequest(
                     rasterPath, outputFc, LandClearingExgThreshold, LandClearingSmoothPx,
                     MinClearingAreaHa * 10000.0, excludeFcPath,
                     LandClearingOpeningIterations, LandClearingClosingIterations,
-                    LandClearingFreshColor, LandClearingBrightMin, LandClearingFillHoleAreaM2);
+                    LandClearingFreshColor, LandClearingBrightMin, LandClearingFillHoleAreaM2,
+                    Provider: string.IsNullOrWhiteSpace(ApiKey) ? null : SelectedProvider.ToLowerInvariant(),
+                    ApiKey: string.IsNullOrWhiteSpace(ApiKey) ? null : ApiKey,
+                    Model: string.IsNullOrWhiteSpace(ApiKey) ? null : SelectedModel);
 
                 var dispatcher = System.Windows.Application.Current.Dispatcher;
                 var result = await PythonBackendService.RunLandClearingAsync(
@@ -213,9 +219,10 @@ namespace TreeCounterAddin
                             SymbolFactory.Instance.ConstructStroke(ColorFactory.Instance.CreateRGBColor(160, 90, 40), 1.5));
                         newLayer.SetRenderer(new CIMSimpleRenderer { Symbol = symbol.MakeSymbolReference() });
                     });
-                    LandClearingStatus = result.PolygonCount == 0
+                    LandClearingStatus = (result.PolygonCount == 0
                         ? "Done: no cleared/bare areas found above the minimum area."
-                        : $"Done: {result.PolygonCount} cleared area(s) found, {result.AreaHa:F2} ha total.";
+                        : $"Done: {result.PolygonCount} cleared area(s) found, {result.AreaHa:F2} ha total.") +
+                        (result.RejectedByAiCount > 0 ? $" ({result.RejectedByAiCount} false positive(s) rejected by AI validation.)" : "");
                 }
                 else
                 {

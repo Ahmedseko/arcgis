@@ -7,10 +7,17 @@ Called by TreeCounterAddin/PythonBackendService.cs as:
     python detect_clearing.py --raster <path> --output-fc <feature class path> \
         --summary <json path> [--exg-threshold N] [--smooth-px N] [--method exg|obia] \
         [--fresh-color] [--bright-min N] [--min-area-m2 N] [--fill-hole-area-m2 N] \
-        [--exclude-fc <polygon feature class to erase, e.g. already-harvested area>]
+        [--exclude-fc <polygon feature class to erase, e.g. already-harvested area>] \
+        [--ai-provider gemini|openai|claude] [--api-key KEY] [--ai-model NAME]
 
 Writes the detected clearing polygons to --output-fc and a JSON summary to --summary:
-    {"polygon_count": int, "output_fc": str, "area_ha": float}
+    {"polygon_count": int, "output_fc": str, "area_ha": float, "rejected_by_ai_count": int}
+
+If --api-key is given, each surviving polygon is additionally cropped (extent + margin,
+see raster_io.read_window) and validated against the selected AI vision provider
+(validator.validate_crops) before being written out - same optional/opt-in AI Vision
+Validation pattern as detect.py's tree candidates, extended here after a real report
+(2026-08-16) asked for it.
 """
 import argparse
 import json
@@ -22,6 +29,7 @@ from land_clearing import (
     detect_land_clearing, DEFAULT_EXG_THRESHOLD, DEFAULT_SMOOTH_PX,
     OPENING_ITERATIONS, CLOSING_ITERATIONS,
 )
+from detect import DEFAULT_MODEL_BY_PROVIDER
 
 
 def main() -> int:
@@ -52,6 +60,9 @@ def main() -> int:
                               "at the vector level regardless of site.")
     parser.add_argument("--exclude-fc", default=None,
                          help="Polygon feature class to erase from results (e.g. already-harvested area)")
+    parser.add_argument("--ai-provider", choices=list(DEFAULT_MODEL_BY_PROVIDER), default=None)
+    parser.add_argument("--api-key", default=None)
+    parser.add_argument("--ai-model", default=None)
     args = parser.parse_args()
 
     try:
@@ -125,6 +136,58 @@ def main() -> int:
         if int(arcpy.management.GetCount("cleared_lyr")[0]) > 0:
             arcpy.management.DeleteFeatures("cleared_lyr")
         arcpy.management.SelectLayerByAttribute("cleared_lyr", "CLEAR_SELECTION")
+        print("PROGRESS 92", flush=True)
+
+        # Optional AI Vision Validation (see module docstring) - runs after the min-area
+        # filter so API calls are only spent on polygons already worth showing, and before
+        # --exclude-fc so an excluded/already-harvested area never gets sent to the API at
+        # all. Crops each polygon's own extent (+ margin, capped so one huge clearing
+        # doesn't balloon the request) via raster_io.read_window rather than loading the
+        # whole raster like validate_trees does - clearing candidates are already a short,
+        # known list of small windows, not scattered points across the full image.
+        rejected_by_ai_count = 0
+        if args.api_key:
+            from raster_io import RasterInfo, read_window
+            from validator import validate_crops, _whole_jpeg_b64
+
+            provider = args.ai_provider or "gemini"
+            model = args.ai_model or DEFAULT_MODEL_BY_PROVIDER.get(provider, DEFAULT_MODEL_BY_PROVIDER["gemini"])
+            print(f"STAGE Validating cleared areas with {provider.capitalize()} ({model})...", flush=True)
+
+            info = RasterInfo(args.raster)
+            MARGIN_PX, MIN_HALF, MAX_HALF = 20, 60, 400
+            pairs = []
+            with arcpy.da.SearchCursor(current_fc, ["OID@", "SHAPE@"]) as cursor:
+                for oid, shape in cursor:
+                    ext = shape.extent
+                    px_xmin = (ext.XMin - info.xmin) / info.px_size
+                    px_xmax = (ext.XMax - info.xmin) / info.px_size
+                    px_ymin = (info.ymax - ext.YMax) / info.px_size
+                    px_ymax = (info.ymax - ext.YMin) / info.px_size
+                    cx, cy = (px_xmin + px_xmax) / 2, (px_ymin + px_ymax) / 2
+                    half_w = min(max((px_xmax - px_xmin) / 2 + MARGIN_PX, MIN_HALF), MAX_HALF)
+                    half_h = min(max((px_ymax - px_ymin) / 2 + MARGIN_PX, MIN_HALF), MAX_HALF)
+                    x_off = max(0, min(int(cx - half_w), info.W - 1))
+                    y_off = max(0, min(int(cy - half_h), info.H - 1))
+                    w = min(int(half_w * 2), info.W - x_off)
+                    h = min(int(half_h * 2), info.H - y_off)
+                    b64 = _whole_jpeg_b64(read_window(args.raster, info, x_off, y_off, w, h))
+                    if b64:
+                        pairs.append((oid, b64))
+
+            kept_oids, _ = validate_crops(
+                pairs, args.api_key, model=model, profile="clearing", provider=provider,
+                progress_cb=lambda p: print(f"PROGRESS {92 + int(p * 0.06)}", flush=True))
+            rejected_oids = [oid for oid, _ in pairs if oid not in kept_oids]
+            rejected_by_ai_count = len(rejected_oids)
+            if rejected_oids:
+                oid_field = arcpy.Describe(current_fc).OIDFieldName
+                arcpy.management.MakeFeatureLayer(current_fc, "ai_reject_lyr")
+                arcpy.management.SelectLayerByAttribute(
+                    "ai_reject_lyr", "NEW_SELECTION",
+                    f"{oid_field} IN ({','.join(str(o) for o in rejected_oids)})")
+                arcpy.management.DeleteFeatures("ai_reject_lyr")
+        print("PROGRESS 98", flush=True)
 
         if args.exclude_fc:
             print("STAGE Excluding already-cleared area...", flush=True)
@@ -143,7 +206,10 @@ def main() -> int:
         return 1
 
     with open(args.summary, "w", encoding="utf-8") as f:
-        json.dump({"polygon_count": count, "output_fc": args.output_fc, "area_ha": total_area_m2 / 10000.0}, f)
+        json.dump({
+            "polygon_count": count, "output_fc": args.output_fc, "area_ha": total_area_m2 / 10000.0,
+            "rejected_by_ai_count": rejected_by_ai_count,
+        }, f)
     print("PROGRESS 100", flush=True)
     return 0
 

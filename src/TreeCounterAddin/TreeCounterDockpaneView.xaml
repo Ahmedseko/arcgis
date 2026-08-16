@@ -686,7 +686,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Optional - confirms candidates via Gemini, OpenAI, or Claude"
+                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Optional - confirms Tree Detection and Land Clearing results via Gemini, OpenAI, or Claude. Applies automatically to both once a key is entered here."
                                            TextWrapping="Wrap" Margin="0,0,0,6" FontSize="11" Foreground="Gray"/>
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Provider" VerticalAlignment="Center"/>
                                 <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Providers}" SelectedItem="{Binding SelectedProvider}" Margin="0,2"/>

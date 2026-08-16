@@ -71,3 +71,17 @@ def read_block(raster_path, info: RasterInfo, y_offset: int, block_h: int):
     ).astype(np.float32)
     block_ymax = info.ymax - y_offset * info.px_size
     return _to_raster_data(arr, info.xmin, block_ymax, info.px_size)
+
+
+def read_window(raster_path, info: RasterInfo, x_offset: int, y_offset: int, w: int, h: int):
+    """
+    Read an arbitrary pixel-space window [x_offset, x_offset+w) x [y_offset, y_offset+h) -
+    same idea as read_block but also windowed in X, for cropping a small area (e.g. one
+    detected land-clearing polygon for AI validation, see validator.py) instead of a
+    full-width horizontal strip. Caller is expected to have already clamped x_offset/
+    y_offset/w/h to the raster's own bounds (read_block's callers don't need to since they
+    only ever window in Y).
+    """
+    lower_left = arcpy.Point(info.xmin + x_offset * info.px_size, info.ymax - (y_offset + h) * info.px_size)
+    arr = arcpy.RasterToNumPyArray(raster_path, lower_left, w, h, nodata_to_value=0).astype(np.float32)
+    return _to_raster_data(arr, info.xmin + x_offset * info.px_size, info.ymax - y_offset * info.px_size, info.px_size)

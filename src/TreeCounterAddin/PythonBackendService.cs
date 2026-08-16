@@ -18,9 +18,9 @@ namespace TreeCounterAddin
     internal record LandClearingRequest(
         string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinAreaM2, string ExcludeFc = null,
         int OpeningIterations = 6, int ClosingIterations = 15, bool FreshColor = false, double BrightMin = 120.0,
-        double FillHoleAreaM2 = 2000.0);
+        double FillHoleAreaM2 = 2000.0, string Provider = null, string ApiKey = null, string Model = null);
 
-    internal record LandClearingResult(bool Success, bool Cancelled, int PolygonCount, string OutputFc, string ErrorMessage, double AreaHa = 0);
+    internal record LandClearingResult(bool Success, bool Cancelled, int PolygonCount, string OutputFc, string ErrorMessage, double AreaHa = 0, int RejectedByAiCount = 0);
 
     internal record RoadExtractionRequest(
         string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinDangleM);
@@ -196,6 +196,15 @@ namespace TreeCounterAddin
             {
                 psi.ArgumentList.Add("--exclude-fc"); psi.ArgumentList.Add(request.ExcludeFc);
             }
+            if (!string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                psi.ArgumentList.Add("--ai-provider"); psi.ArgumentList.Add(request.Provider ?? "gemini");
+                psi.ArgumentList.Add("--api-key"); psi.ArgumentList.Add(request.ApiKey);
+                if (!string.IsNullOrWhiteSpace(request.Model))
+                {
+                    psi.ArgumentList.Add("--ai-model"); psi.ArgumentList.Add(request.Model);
+                }
+            }
 
             try
             {
@@ -239,7 +248,8 @@ namespace TreeCounterAddin
                     root.GetProperty("polygon_count").GetInt32(),
                     root.GetProperty("output_fc").GetString(),
                     null,
-                    root.GetProperty("area_ha").GetDouble());
+                    root.GetProperty("area_ha").GetDouble(),
+                    root.TryGetProperty("rejected_by_ai_count", out var rc) ? rc.GetInt32() : 0);
             }
             catch (Exception ex)
             {
