@@ -22,6 +22,12 @@ namespace TreeCounterAddin
             public double BiomassExpansionFactor { get; set; } = 1.5;
             public double RootShootRatio { get; set; } = 0.37;
             public double CarbonFraction { get; set; } = 0.47;
+
+            // Added 2026-08-17 - was in-memory-only (always reset to true on every ArcGIS
+            // Pro restart/add-in reinstall regardless of what the user last picked), which
+            // silently re-enabled AI Vision Validation after a real report of it running up
+            // an unexpected API bill. Same on-every-set persistence as everything else here.
+            public bool UseAiValidation { get; set; } = true;
         }
 
         public static Settings Load()

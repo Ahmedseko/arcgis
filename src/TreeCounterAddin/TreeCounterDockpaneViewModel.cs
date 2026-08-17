@@ -48,6 +48,7 @@ namespace TreeCounterAddin
             _biomassExpansionFactor = settings.BiomassExpansionFactor;
             _rootShootRatio = settings.RootShootRatio;
             _carbonFraction = settings.CarbonFraction;
+            _useAiValidation = settings.UseAiValidation;
 
             // Reverse-lookup the saved WKID back to its zone label so the dropdown shows the
             // right zone on restart instead of resetting to the "WGS 1984 UTM Zone 50S"
@@ -144,6 +145,7 @@ namespace TreeCounterAddin
             BiomassExpansionFactor = BiomassExpansionFactor,
             RootShootRatio = RootShootRatio,
             CarbonFraction = CarbonFraction,
+            UseAiValidation = UseAiValidation,
         });
 
         protected override async void OnShow(bool isVisible)

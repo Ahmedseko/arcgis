@@ -136,7 +136,7 @@ namespace TreeCounterAddin
         public bool UseAiValidation
         {
             get => _useAiValidation;
-            set => SetProperty(ref _useAiValidation, value);
+            set { if (SetProperty(ref _useAiValidation, value)) SaveSettings(); }
         }
 
         private string _testKeyStatus;
