@@ -9,11 +9,14 @@ tuning, see the callout below), fishnet grid generation, field-data import
 riparian-buffer analysis, a cruising summary report, GPX export, and a custom
 photo popup tool.
 
+<!-- Screenshots section - commented out until real screenshots exist (none are
+ready yet, 2026-08-18). Uncomment once docs/images/*.png are filled in - see
+docs/images/README.md for exact filenames/what each should capture. Leaving this
+live with missing files renders as broken links, not a clean placeholder, on both
+GitHub and most local Markdown previews.
+
 ## Screenshots
 
-<!-- Placeholders - drop real PNGs into docs/images/ with these exact filenames
-     and they'll show up here automatically, see docs/images/README.md for what
-     each one should capture. -->
 <table>
 <tr>
 <td width="50%"><img src="docs/images/panel-overview.png" alt="DockPane overview" /><br/><sub>Panel overview</sub></td>
@@ -29,6 +32,7 @@ Tree Detection isn't in this lineup on purpose - see the callout on it below and
 the [Status](#status-tree-detection--python-backend) section; it's real and
 usable but still has open accuracy issues, not a finished result to lead with
 yet.
+-->
 
 ## Architecture
 
