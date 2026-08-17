@@ -52,10 +52,19 @@ DEFAULT_SMOOTH_PX = 3
 # water is dark and neutral-to-blue (b >= r). Unlike fresh_color this isn't optional - a
 # pond flagged as "cleared land" is always wrong, not a site-specific precision/recall
 # trade-off - so it's applied unconditionally rather than gated behind a CLI flag.
-# ponytail: threshold picked by eye against the reported false-positive screenshots, not
-# swept against ground truth like OPENING_ITERATIONS - revisit if it clips real dark/wet
-# bare soil on some site.
-WATER_BRIGHTNESS_MAX = 90.0
+#
+# Was 90 (picked by eye, never swept against real data) until the same 721-sample Color
+# Reference Sampler dataset used for DEFAULT_EXG_THRESHOLD above (2026-08-17) showed it
+# was doing essentially nothing: of the 61 real "Sungai/air" samples that actually read as
+# low-ExG "cleared" (i.e. the ones this rule exists to rescue), 90 caught 0 of them - real
+# water here tends to be turbid/silty (common for tropical rivers), not the dark clean
+# water the old value assumed. Raising to 150 catches 43/61 (70%) with zero real
+# "Bukaan/tanah terbuka" samples wrongly excluded, at any value up to 255 in this dataset -
+# the b>=r "blueish" check is what's actually doing the discriminating, brightness barely
+# matters once past a low floor. The remaining 18/61 water samples read reddish/muddy
+# enough (r > b) that no brightness cutoff can save them - same genuine, color-based limit
+# as DEFAULT_EXG_THRESHOLD's building/roof note above.
+WATER_BRIGHTNESS_MAX = 150.0
 
 # Denoise/generalize passes, applied once to the FULL assembled mask (not per-block - see
 # below). Repeated small-kernel passes (scipy's own recommended efficient approach) rather
