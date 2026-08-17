@@ -7,6 +7,22 @@ generation, field-data import (Excel, geotagged photos, photo-watermark OCR),
 sliver-polygon/biomass/slope/riparian-buffer analysis, a cruising summary
 report, GPX export, and a custom photo popup tool.
 
+## Screenshots
+
+<!-- Placeholders - drop real PNGs into docs/images/ with these exact filenames
+     and they'll show up here automatically, see docs/images/README.md for what
+     each one should capture. -->
+<table>
+<tr>
+<td width="50%"><img src="docs/images/panel-overview.png" alt="DockPane overview" /><br/><sub>Panel overview</sub></td>
+<td width="50%"><img src="docs/images/tree-detection-result.png" alt="Tree Detection result" /><br/><sub>Tree Detection</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/land-clearing-result.png" alt="Land Clearing Detection result" /><br/><sub>Land Clearing Detection</sub></td>
+<td width="50%"><img src="docs/images/road-extraction-result.png" alt="Road/Trail Extraction result" /><br/><sub>Road/Trail Extraction</sub></td>
+</tr>
+</table>
+
 ## Architecture
 
 Hybrid: native UI in .NET, detection logic stays in Python (run through
@@ -15,6 +31,39 @@ matched filter + YOLOv8n ONNX for oil palm) is numpy/scipy-heavy and has been
 through a lot of tuning/bugfixing (see `qgis_plugin/AGENTS.md`) - rewriting it
 by hand in C# risks reintroducing the same bugs without the ground-truth
 harness that already exists there.
+
+```mermaid
+flowchart LR
+    subgraph ArcGISPro["ArcGIS Pro process (.NET)"]
+        Ribbon["Ribbon tab / buttons"]
+        DockPane["DockPane WPF UI\n(TreeCounterDockpaneView/ViewModel)"]
+        MapTool["Map click tools\n(Photo Popup, Color Sampler)"]
+        Ribbon --> DockPane
+        MapTool --> DockPane
+    end
+
+    subgraph PyBackend["Python subprocess (ArcGIS Pro's own conda env)"]
+        Service["PythonBackendService.cs\n(spawns + streams progress)"]
+        Scripts["backend/*.py\n(detect.py, detect_clearing.py,\ndetect_roads.py, ...)"]
+        Algo["numpy / scipy / scikit-image\nExG + Gaussian filter, YOLOv8/U-Net (ONNX)"]
+        Service --> Scripts --> Algo
+    end
+
+    subgraph Optional["Optional, opt-in"]
+        AI["Gemini / OpenAI / Claude\nAI Vision Validation\n(your own API key)"]
+    end
+
+    GP["arcpy GP tools\n(RasterToPolygon, SmoothPolygon, ...)"]
+    FC["Feature class in the project gdb"]
+    Map["Loaded back onto the active map\nwith symbology"]
+
+    DockPane -- "raster/layer paths + params" --> Service
+    Algo -- "mask / points / lines" --> GP
+    Algo -. "candidate crops, if enabled" .-> AI
+    AI -. "accept/reject" .-> GP
+    GP --> FC --> Map
+    Service -- "progress % / stage text" --> DockPane
+```
 
 ```text
 src/TreeCounterAddin/     .NET add-in: ribbon button + WPF DockPane (UI)
