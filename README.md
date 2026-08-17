@@ -1,11 +1,13 @@
 # Forestry Toolkit (ArcGIS Pro Add-in)
 
 An ArcGIS Pro dockpane + ribbon tab covering the common steps of a timber
-cruising/forestry workflow: tree detection from drone orthophotos (ported from
-the QGIS plugin `qgis_plugin/tree_counter`, LandTree Analyzer), fishnet grid
-generation, field-data import (Excel, geotagged photos, photo-watermark OCR),
-sliver-polygon/biomass/slope/riparian-buffer analysis, a cruising summary
-report, GPX export, and a custom photo popup tool.
+cruising/forestry workflow: land clearing and road/trail extraction from drone
+orthophotos, tree/oil palm detection (ported from the QGIS plugin
+`qgis_plugin/tree_counter`, LandTree Analyzer - still under active accuracy
+tuning, see the callout below), fishnet grid generation, field-data import
+(Excel, geotagged photos, photo-watermark OCR), sliver-polygon/biomass/slope/
+riparian-buffer analysis, a cruising summary report, GPX export, and a custom
+photo popup tool.
 
 ## Screenshots
 
@@ -15,13 +17,18 @@ report, GPX export, and a custom photo popup tool.
 <table>
 <tr>
 <td width="50%"><img src="docs/images/panel-overview.png" alt="DockPane overview" /><br/><sub>Panel overview</sub></td>
-<td width="50%"><img src="docs/images/tree-detection-result.png" alt="Tree Detection result" /><br/><sub>Tree Detection</sub></td>
+<td width="50%"><img src="docs/images/land-clearing-result.png" alt="Land Clearing Detection result" /><br/><sub>Land Clearing Detection</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/images/land-clearing-result.png" alt="Land Clearing Detection result" /><br/><sub>Land Clearing Detection</sub></td>
 <td width="50%"><img src="docs/images/road-extraction-result.png" alt="Road/Trail Extraction result" /><br/><sub>Road/Trail Extraction</sub></td>
+<td width="50%"><img src="docs/images/color-sampler.png" alt="Color Reference Sampler" /><br/><sub>Color Reference Sampler</sub></td>
 </tr>
 </table>
+
+Tree Detection isn't in this lineup on purpose - see the callout on it below and
+the [Status](#status-tree-detection--python-backend) section; it's real and
+usable but still has open accuracy issues, not a finished result to lead with
+yet.
 
 ## Architecture
 
@@ -273,7 +280,17 @@ produced it) - add if the log alone isn't enough.
 
 ### Analyze tab
 
-- **Tree Detection** - pick a raster layer and a profile (**Natural Forest**
+- **Tree Detection** - ⚠️ **still under active development, not accuracy-
+  validated yet.** Runs and produces a result, but real visual checks against
+  actual orthophotos (2026-07-31, see the [Status](#status-tree-detection--python-backend)
+  section below) found real, still-open problems: one crown sometimes split
+  into multiple points, real crowns missed, false positives on blurred/
+  stitching-seam regions. Fixing these needs Sigma/threshold recalibration
+  against real point-level tree-crown ground truth, which isn't available
+  right now (2026-08-17 check - see the Status section). Useful for a rough
+  first pass, not yet something to report a tree count from without visually
+  checking the result against the orthophoto first. Pick a raster layer and a
+  profile (**Natural Forest**
   or **Oil Palm Plantation**; advanced sigma/ExG-threshold/min-smooth
   parameters are on the **Settings** tab), click **Detect Trees**. Runs the
   ported ExG/YOLO pipeline as a background subprocess - safe to switch to a
