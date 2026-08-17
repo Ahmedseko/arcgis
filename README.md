@@ -341,7 +341,12 @@ produced it) - add if the log alone isn't enough.
   call "road" as a result. The high correctness is the encouraging part -
   fine-tuning it on real local ground truth (the notebook's own "Next
   steps" section) is the natural next step before writing this approach
-  off, not confirmation it can't work.
+  off, not confirmation it can't work. Blocked for now (2026-08-17 check):
+  fine-tuning needs a Kaggle GPU session (can't run from this add-in's own
+  dev environment) plus meaningfully more local road ground truth than the
+  one 6.2km/11-segment shapefile above - thin for fine-tuning a
+  segmentation net even with transfer learning. Whoever picks this up next
+  runs the notebook themselves per its own "Next steps" section.
 - **Compare Changes** - change detection between two Tree Detection runs of
   the same site over time. Pick the old and new detection point layers and a
   match distance (meters - covers re-run centroid jitter, not just exact
@@ -510,6 +515,17 @@ in the DockPane.
   test, not swept against a real blurred orthophoto region - try it
   site-by-site (`--exclude-blurry` on `detect.py`) rather than trusting it
   as a universal default.
+- (2)/(3)'s Sigma/threshold recalibration and (4)'s `exclude_blurry` sweep
+  both stay blocked, not just "still open" (2026-08-17 check): both need
+  imagery at the same 5cm/px resolution regime as the real drone orthophoto
+  above (`REFERENCE_GSD_M` in `detector.py`) - individual crowns aren't
+  resolvable at the 1m/px tiles `land_clearing.py`/`road_extraction.py`'s own
+  ground-truth tuning uses (see their own README entries), and that 1m/px
+  regime is all that's currently reachable on disk. The original
+  54150x36052px drone orthophoto itself couldn't be relocated either. Needs:
+  that orthophoto (or an equivalent 5cm/px tile) back in reach, plus
+  point-level tree-crown ground truth for (2)/(3) specifically - nothing to
+  recalibrate against otherwise.
 - Land Clearing Detection's boundary also looked "too busy/jagged, not like
   human digitization" on first visual check - fixed with an opening+closing
   smoothing pass on the mask plus switching `RasterToPolygon` to `SIMPLIFY`
