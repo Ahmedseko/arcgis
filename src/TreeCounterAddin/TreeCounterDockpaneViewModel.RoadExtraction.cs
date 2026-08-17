@@ -35,6 +35,20 @@ namespace TreeCounterAddin
             set => SetProperty(ref _minDangleM, value);
         }
 
+        // 0 = off (matches road_extraction.py's own MAX_ROAD_WIDTH_M default) - real
+        // ground truth (2026-08-11, see that file's own docstring) found every value from
+        // 15-50m scored WORSE than 0 on the one site tested (its bare-ground corridor runs
+        // wider than 50m for long stretches, not just at isolated quarry pockets). Exposed
+        // here anyway, same as Land Clearing's FreshColor toggle, as a per-site knob to try
+        // where quarry/stockpile pockets are narrower than the road itself - not a new
+        // default.
+        private double _maxRoadWidthM = 0;
+        public double MaxRoadWidthM
+        {
+            get => _maxRoadWidthM;
+            set => SetProperty(ref _maxRoadWidthM, value);
+        }
+
         private bool _isExtractingRoads;
         public bool IsExtractingRoads
         {
@@ -102,7 +116,7 @@ namespace TreeCounterAddin
                 // TreeDetection.cs.
                 var aiEnabled = UseAiValidation && !string.IsNullOrWhiteSpace(ApiKey);
                 var request = new RoadExtractionRequest(
-                    rasterPath, outputFc, ROAD_EXG_THRESHOLD, DEFAULT_SMOOTH_PX, MinDangleM,
+                    rasterPath, outputFc, ROAD_EXG_THRESHOLD, DEFAULT_SMOOTH_PX, MinDangleM, MaxRoadWidthM,
                     Provider: aiEnabled ? SelectedProvider.ToLowerInvariant() : null,
                     ApiKey: aiEnabled ? ApiKey : null,
                     Model: aiEnabled ? SelectedModel : null);

@@ -26,6 +26,7 @@ namespace TreeCounterAddin
 
     internal record RoadExtractionRequest(
         string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinDangleM,
+        double MaxWidthM = 0,
         string Provider = null, string ApiKey = null, string Model = null);
 
     internal record RoadExtractionResult(bool Success, bool Cancelled, int LineCount, string OutputFc, string ErrorMessage, double LengthKm = 0, int RejectedByAiCount = 0);
@@ -299,6 +300,7 @@ namespace TreeCounterAddin
             psi.ArgumentList.Add("--exg-threshold"); psi.ArgumentList.Add(request.ExgThreshold.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--smooth-px"); psi.ArgumentList.Add(request.SmoothPx.ToString(CultureInfo.InvariantCulture));
             psi.ArgumentList.Add("--min-dangle-m"); psi.ArgumentList.Add(request.MinDangleM.ToString(CultureInfo.InvariantCulture));
+            psi.ArgumentList.Add("--max-width-m"); psi.ArgumentList.Add(request.MaxWidthM.ToString(CultureInfo.InvariantCulture));
             if (!string.IsNullOrWhiteSpace(request.ApiKey))
             {
                 psi.ArgumentList.Add("--ai-provider"); psi.ArgumentList.Add(request.Provider ?? "gemini");

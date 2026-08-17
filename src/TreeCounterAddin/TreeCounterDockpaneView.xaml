@@ -428,6 +428,9 @@
                                 <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RoadExtraction_MinDangleLabel}" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding MinDangleM}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RoadExtraction_MaxWidthLabel}" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding MaxRoadWidthM}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=RoadExtraction_Extract}" Command="{Binding ExtractRoadsCommand}" Style="{StaticResource ActionButton}"/>
                                     <Button Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=Cancel}" Command="{Binding CancelRoadExtractionCommand}" Style="{StaticResource ActionButton}" Margin="6,0,0,0"

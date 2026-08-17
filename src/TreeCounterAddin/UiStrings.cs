@@ -162,6 +162,7 @@ namespace TreeCounterAddin
                 "Extracts road/trail centerlines from bare-ground areas (same signal Land Clearing Detection uses) - skeletonized down to a single line down the middle of each road instead of a filled area.",
                 "Menarik garis tengah jalan/jalur dari area tanah gundul (sinyal yang sama dipakai Land Clearing Detection) - ditipiskan jadi satu garis di tengah jalan, bukan area terisi penuh."),
             ["RoadExtraction_MinDangleLabel"] = ("Drop stubs shorter than (meters)", "Buang sisa fragmen lebih pendek dari (meter)"),
+            ["RoadExtraction_MaxWidthLabel"] = ("Max road width, 0=off (meters)", "Lebar jalan maksimum, 0=nonaktif (meter)"),
             ["RoadExtraction_Extract"] = ("Extract Roads", "Extract Roads"),
 
             // ---- Compare Changes ----
