@@ -770,12 +770,13 @@
                             <Run Text="• ArcGIS Pro SDK (.NET / C# / WPF) - this add-in shell"/><LineBreak/>
                             <Run Text="• Python (arcpy, numpy, scipy, scikit-image) - detection/analysis backend, runs inside ArcGIS Pro's own conda environment"/><LineBreak/>
                             <Run Text="• YOLOv8 (ONNX Runtime) - oil palm crown detection"/><LineBreak/>
+                            <Run Text="• U-Net (ONNX Runtime, optional) - learned road-mask alternative to the ExG threshold"/><LineBreak/>
                             <Run Text="• Tesseract OCR - Photo Coordinate OCR"/><LineBreak/>
                             <Run Text="• Google Gemini / OpenAI / Anthropic Claude (optional, your own API key) - AI Vision Validation"/>
                         </TextBlock>
 
                         <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=About_SourceHeader}" FontWeight="SemiBold" HorizontalAlignment="Left"/>
-                        <TextBlock Text="github.com/Ahmedseko/arcgis" HorizontalAlignment="Left" Margin="0,0,0,4"/>
+                        <TextBlock Text="github.com/Ahmedseko/forestry-toolkit" HorizontalAlignment="Left" Margin="0,0,0,4"/>
                     </StackPanel>
                 </TabItem>
             </TabControl>
