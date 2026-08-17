@@ -13,9 +13,10 @@ namespace TreeCounterAddin
     internal record DetectionRequest(
         string RasterPath, string Profile, string OutputFc,
         int Sigma, double ExgThreshold, double MinSmooth, bool ExcludeClearedLand = false,
+        string ExcludeFc = null,
         string Provider = null, string ApiKey = null, string Model = null);
 
-    internal record DetectionResult(bool Success, bool Cancelled, int TreeCount, string OutputFc, string ErrorMessage, double AreaHa = 0, int FilteredClearedCount = 0, int RejectedByAiCount = 0);
+    internal record DetectionResult(bool Success, bool Cancelled, int TreeCount, string OutputFc, string ErrorMessage, double AreaHa = 0, int FilteredClearedCount = 0, int ExcludedByAreaCount = 0, int RejectedByAiCount = 0);
 
     internal record LandClearingRequest(
         string RasterPath, string OutputFc, double ExgThreshold, double SmoothPx, double MinAreaM2, string ExcludeFc = null,
@@ -99,6 +100,10 @@ namespace TreeCounterAddin
             {
                 psi.ArgumentList.Add("--exclude-cleared");
             }
+            if (!string.IsNullOrWhiteSpace(request.ExcludeFc))
+            {
+                psi.ArgumentList.Add("--exclude-fc"); psi.ArgumentList.Add(request.ExcludeFc);
+            }
             if (!string.IsNullOrWhiteSpace(request.ApiKey))
             {
                 psi.ArgumentList.Add("--ai-provider"); psi.ArgumentList.Add(request.Provider ?? "gemini");
@@ -156,6 +161,7 @@ namespace TreeCounterAddin
                     null,
                     root.GetProperty("area_ha").GetDouble(),
                     root.TryGetProperty("filtered_cleared_count", out var fc) ? fc.GetInt32() : 0,
+                    root.TryGetProperty("excluded_by_area_count", out var ec) ? ec.GetInt32() : 0,
                     root.TryGetProperty("rejected_by_ai_count", out var rc) ? rc.GetInt32() : 0);
             }
             catch (Exception ex)

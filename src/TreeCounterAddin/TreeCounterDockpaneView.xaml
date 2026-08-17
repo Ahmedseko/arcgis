@@ -336,6 +336,9 @@
                                 <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=TreeDetection_ProfileLabel}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" Margin="0,0,0,8"/>
 
+                                <TextBlock Text="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=TreeDetection_ExcludeAreaLabel}" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding PolygonLayers}" SelectedItem="{Binding SelectedTreeExcludeAreaLayer}" Margin="0,0,0,8"/>
+
                                 <CheckBox Content="{Binding IsHelpEnglish, Converter={StaticResource UiText}, ConverterParameter=TreeDetection_ExcludeCleared}"
                                           IsChecked="{Binding ExcludeClearedLand}" Margin="0,0,0,8"/>
 

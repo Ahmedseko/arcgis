@@ -27,7 +27,13 @@ def _make_synthetic_tif(path):
         dist2 = (xs - cx) ** 2 + (ys - cy) ** 2
         blob = np.exp(-dist2 / (2 * 12.0 ** 2))
         arr[1] = np.clip(arr[1] + blob * 180, 0, 255)  # bright green crown
-    lower_left = arcpy.Point(0, 0)
+    # A real-ish UTM Zone 50S location, not (0, 0) - only matters for the newer
+    # exclude-fc test below, which writes a real feature class (CreateFeatureclass):
+    # a brand-new fc's default XY domain for a real projected CRS doesn't necessarily
+    # span all the way down to (0, 0), which isn't a real location any actual drone
+    # orthophoto would ever be at anyway. The other tests only check relative pixel
+    # positions (px/py), never geo_x/geo_y, so this has no effect on them.
+    lower_left = arcpy.Point(500_000, 9_500_000)
     raster = arcpy.NumPyArrayToRaster(arr, lower_left, PX_SIZE_M, PX_SIZE_M)
     raster.save(path)
     arcpy.management.DefineProjection(path, arcpy.SpatialReference(32750))
@@ -117,8 +123,64 @@ def test_exclude_blurry_drops_smooth_crown_keeps_textured_one():
             f"smooth/blurry crown should be filtered out: {found}"
 
 
+def test_detect_cli_exclude_fc_removes_points_inside_polygon():
+    # CLI-level check (subprocess, real detect.py) for the --exclude-fc erase path
+    # (2026-08-17, parity with detect_clearing.py's own --exclude-fc) - detector.py's
+    # own detect_trees() is already covered by the tests above, this one exercises the
+    # new PairwiseErase + before/after count arithmetic in detect.py's main() instead.
+    import json
+    import subprocess
+    import sys
+
+    DETECT_PY = os.path.join(os.path.dirname(__file__), "detect.py")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tif_path = os.path.join(tmp, "synthetic.tif")
+        _make_synthetic_tif(tif_path)
+
+        trees, _ = detect_trees(
+            tif_path, sigma_px=12, exg_threshold=30, min_smooth=20,
+            mode='forest', min_density=0.0, extra_scales=[])
+        assert len(trees) == len(CROWNS_PX)
+
+        gdb = os.path.join(tmp, "scratch.gdb")
+        arcpy.management.CreateFileGDB(tmp, "scratch.gdb")
+        sr = arcpy.SpatialReference(32750)
+
+        # A 2m circle around one real detected tree's own geo coordinates - guaranteed to
+        # cover exactly that one point, unlike guessing world coords from CROWNS_PX by hand.
+        target = trees[0]
+        exclude_fc = os.path.join(gdb, "exclude_area")
+        circle = arcpy.PointGeometry(arcpy.Point(target["geo_x"], target["geo_y"]), sr).buffer(2.0)
+        arcpy.management.CopyFeatures([circle], exclude_fc)
+
+        output_fc = os.path.join(gdb, "detected_pts")
+        summary_path = os.path.join(tmp, "summary.json")
+        proc = subprocess.run(
+            [sys.executable, DETECT_PY, "--raster", tif_path, "--profile", "Natural Forest",
+             "--output-fc", output_fc, "--summary", summary_path,
+             "--sigma", "12", "--exg-threshold", "30", "--min-smooth", "20",
+             "--exclude-fc", exclude_fc],
+            capture_output=True, text=True,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+
+        with open(summary_path) as f:
+            summary = json.load(f)
+        assert summary["excluded_by_area_count"] == 1, summary
+        assert summary["tree_count"] == len(CROWNS_PX) - 1, summary
+        assert int(arcpy.management.GetCount(output_fc)[0]) == len(CROWNS_PX) - 1
+
+        # Same Windows file-lock-on-cleanup issue as the raster `del` elsewhere in this
+        # file, gdb-schema-lock flavor: this process's own arcpy connection (CopyFeatures/
+        # GetCount above) keeps scratch.gdb's .lock file open otherwise, and the `with`
+        # block's cleanup can't delete a locked file.
+        arcpy.management.ClearWorkspaceCache(gdb)
+
+
 if __name__ == "__main__":
     test_detects_planted_crowns()
     test_detects_planted_crowns_across_multiple_blocks()
     test_exclude_blurry_drops_smooth_crown_keeps_textured_one()
+    test_detect_cli_exclude_fc_removes_points_inside_polygon()
     print("OK")

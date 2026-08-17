@@ -11,13 +11,13 @@ Called by TreeCounterAddin/PythonBackendService.cs as:
     python detect.py --raster <path> --profile "Natural Forest|Oil Palm Plantation" \
         --output-fc <feature class path> --summary <json path> \
         [--sigma N] [--exg-threshold N] [--min-smooth N] [--conf-threshold N] \
-        [--exclude-cleared] \
+        [--exclude-cleared] [--exclude-fc <polygon feature class to erase>] \
         [--ai-provider gemini|openai|claude] [--api-key KEY] [--ai-model NAME]
 
 Writes the detected points to --output-fc (created fresh, same spatial
 reference as --raster) and a JSON summary to --summary:
     {"tree_count": int, "output_fc": str, "area_ha": float, "filtered_cleared_count": int,
-     "rejected_by_ai_count": int}
+     "excluded_by_area_count": int, "rejected_by_ai_count": int}
 
 --exclude-cleared reuses land_clearing.build_cleared_mask (see that module) to drop any
 candidate whose pixel falls on cleared/bare ground - added after visual validation
@@ -26,6 +26,13 @@ soil/roads that pass the ExG vegetation threshold on their own (small residual
 weeds/soil-color artifacts). Roughly doubles run time (a second full raster
 scan) since it's a real accuracy fix, not a free one - left as an opt-in
 checkbox in the add-in rather than always-on.
+
+--exclude-fc is a different kind of exclude - a polygon layer *you* supply (already-
+surveyed block, plantation boundary, a no-go zone) rather than something computed from
+the raster, same idea as detect_clearing.py's own --exclude-fc (added 2026-08-17 after
+a real request: "Tree Detection needs an exclude option too, like Land Clearing has").
+Erased via arcpy.analysis.PairwiseErase after detection, same GP tool/timing
+detect_clearing.py already uses.
 
 Algorithm: Natural Forest always uses the ExG + Gaussian matched filter
 detector (detector.detect_trees). Oil Palm Plantation uses the local YOLOv8n
@@ -188,6 +195,8 @@ def main() -> int:
     parser.add_argument("--conf-threshold", type=float, default=0.25)
     parser.add_argument("--exclude-cleared", action="store_true",
                          help="Drop candidates that fall on cleared/bare ground (see land_clearing.py) - roughly doubles run time")
+    parser.add_argument("--exclude-fc", default=None,
+                         help="Polygon feature class to erase from results (e.g. an already-surveyed block or a no-go zone)")
     parser.add_argument("--exclude-blurry", action="store_true",
                          help="Drop candidates in blurred/stitching-seam regions (see detector.BLUR_VARIANCE_MIN) - unvalidated against ground truth, opt-in")
     parser.add_argument("--ai-provider", choices=list(DEFAULT_MODEL_BY_PROVIDER), default=None)
@@ -205,7 +214,22 @@ def main() -> int:
             progress_cb=lambda p: print(f"PROGRESS {p}", flush=True),
             stage_cb=lambda s: print(f"STAGE {s}", flush=True),
         )
-        output_fc = _write_feature_class(trees, args.raster, args.output_fc)
+        raw_fc = args.output_fc + "_raw" if args.exclude_fc else args.output_fc
+        raw_fc = _write_feature_class(trees, args.raster, raw_fc)
+
+        excluded_by_area_count = 0
+        if args.exclude_fc:
+            print("STAGE Excluding points inside the exclude-area layer...", flush=True)
+            before = int(arcpy.management.GetCount(raw_fc)[0])
+            arcpy.analysis.PairwiseErase(raw_fc, args.exclude_fc, args.output_fc)
+            arcpy.management.Delete(raw_fc)
+            output_fc = args.output_fc
+            excluded_by_area_count = before - int(arcpy.management.GetCount(output_fc)[0])
+            tree_count = before - excluded_by_area_count
+        else:
+            output_fc = raw_fc
+            tree_count = len(trees)
+
         # Total scanned area (the whole raster extent, not the area covered by detected
         # crowns) - same value regardless of how many trees were found.
         info = RasterInfo(args.raster)
@@ -216,8 +240,9 @@ def main() -> int:
 
     with open(args.summary, "w", encoding="utf-8") as f:
         json.dump({
-            "tree_count": len(trees), "output_fc": output_fc, "area_ha": area_ha,
+            "tree_count": tree_count, "output_fc": output_fc, "area_ha": area_ha,
             "filtered_cleared_count": filtered_cleared_count,
+            "excluded_by_area_count": excluded_by_area_count,
             "rejected_by_ai_count": rejected_by_ai_count,
         }, f)
     return 0

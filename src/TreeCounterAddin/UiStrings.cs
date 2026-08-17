@@ -133,6 +133,7 @@ namespace TreeCounterAddin
             ["TreeDetection_Header"] = ("Tree Detection", "Tree Detection"),
             ["RasterLayerLabel"] = ("Raster layer", "Layer raster"),
             ["TreeDetection_ProfileLabel"] = ("Detection profile", "Profil deteksi"),
+            ["TreeDetection_ExcludeAreaLabel"] = ("Exclude area layer (optional)", "Layer area yang dikecualikan (opsional)"),
             ["TreeDetection_ExcludeCleared"] = ("Exclude cleared/bare ground (recommended, roughly doubles run time)",
                 "Kecualikan tanah gundul/terbuka (disarankan, waktu proses kira-kira dua kali lipat)"),
             ["TreeDetection_Detect"] = ("Detect Trees", "Detect Trees"),

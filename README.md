@@ -278,7 +278,12 @@ produced it) - add if the log alone isn't enough.
   parameters are on the **Settings** tab), click **Detect Trees**. Runs the
   ported ExG/YOLO pipeline as a background subprocess - safe to switch to a
   different map while it runs. Result loads as a point layer (green =
-  forest, red = oil palm). The **"Exclude cleared/bare ground"** checkbox
+  forest, red = oil palm). Optionally pick an **exclude area layer** (a
+  polygon layer - an already-surveyed block, plantation boundary, or no-go
+  zone) to erase any candidate that falls inside it before the result is
+  written, same idea and same `PairwiseErase` GP tool as Land Clearing
+  Detection's own exclude area layer below (added 2026-08-17 for parity
+  between the two). The **"Exclude cleared/bare ground"** checkbox
   (on by default) drops candidates that land on bare soil/roads/open
   ground - added after visual validation against a real orthophoto showed
   false positives there; it roughly doubles run time (a second full raster

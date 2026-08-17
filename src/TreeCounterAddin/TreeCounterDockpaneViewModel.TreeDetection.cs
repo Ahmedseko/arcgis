@@ -36,6 +36,19 @@ namespace TreeCounterAddin
             set => SetProperty(ref _selectedRasterLayer, value);
         }
 
+        // Optional - left unselected (null) means "don't exclude anything". Same
+        // PolygonLayers/pattern as LandClearing.cs's own SelectedExcludeAreaLayer (an
+        // already-surveyed block, plantation boundary, or no-go zone) - own name, not a
+        // shared property, since both features' Expanders are visible on the same panel
+        // at once and need independent selections. Added 2026-08-17 after a real request
+        // for parity between the two features.
+        private string _selectedTreeExcludeAreaLayer;
+        public string SelectedTreeExcludeAreaLayer
+        {
+            get => _selectedTreeExcludeAreaLayer;
+            set => SetProperty(ref _selectedTreeExcludeAreaLayer, value);
+        }
+
         private string _selectedProfile = "Oil Palm Plantation";
         public string SelectedProfile
         {
@@ -227,11 +240,15 @@ namespace TreeCounterAddin
                 // then point at whatever map they're looking at, not the one that was scanned.
                 var map = MapView.Active.Map;
 
-                var rasterPath = await QueuedTask.Run(() =>
-                    map.GetLayersAsFlattenedList()
-                        .OfType<RasterLayer>()
-                        .FirstOrDefault(l => l.Name == SelectedRasterLayer)
-                        ?.GetPath()?.LocalPath);
+                var (rasterPath, excludeFcPath) = await QueuedTask.Run(() =>
+                {
+                    var layers = map.GetLayersAsFlattenedList();
+                    var raster = layers.OfType<RasterLayer>().FirstOrDefault(l => l.Name == SelectedRasterLayer)
+                        ?.GetPath()?.LocalPath;
+                    var exclude = SelectedTreeExcludeAreaLayer == null ? null
+                        : layers.OfType<FeatureLayer>().FirstOrDefault(l => l.Name == SelectedTreeExcludeAreaLayer)?.GetPath()?.LocalPath;
+                    return (raster, exclude);
+                });
 
                 if (rasterPath == null)
                 {
@@ -254,7 +271,7 @@ namespace TreeCounterAddin
                 var aiEnabled = UseAiValidation && !string.IsNullOrWhiteSpace(ApiKey);
                 var request = new DetectionRequest(
                     rasterPath, SelectedProfile, outputFc, Sigma, ExgThreshold, MinSmooth,
-                    ExcludeClearedLand: ExcludeClearedLand,
+                    ExcludeClearedLand: ExcludeClearedLand, ExcludeFc: excludeFcPath,
                     Provider: aiEnabled ? SelectedProvider.ToLowerInvariant() : null,
                     ApiKey: aiEnabled ? ApiKey : null,
                     Model: aiEnabled ? SelectedModel : null);
@@ -288,9 +305,12 @@ namespace TreeCounterAddin
                     var clearedNote = result.FilteredClearedCount > 0
                         ? Tr($" ({result.FilteredClearedCount} false positive(s) on cleared ground filtered out.)",
                              $" ({result.FilteredClearedCount} false positive di tanah terbuka telah disaring.)") : "";
+                    var excludedNote = result.ExcludedByAreaCount > 0
+                        ? Tr($" ({result.ExcludedByAreaCount} point(s) inside the exclude area removed.)",
+                             $" ({result.ExcludedByAreaCount} titik di dalam area exclude telah dihapus.)") : "";
                     StatusText = Tr($"Done: {result.TreeCount} trees detected across {result.AreaHa:F1} ha scanned.",
                         $"Selesai: {result.TreeCount} pohon terdeteksi di {result.AreaHa:F1} ha yang dipindai.") +
-                        clearedNote + aiNote;
+                        clearedNote + excludedNote + aiNote;
                 }
                 else
                 {
