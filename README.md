@@ -92,6 +92,14 @@ dropdowns refresh themselves automatically on map switch or layer add/remove;
 **Refresh** (top of the panel) is still there for the rare case something
 doesn't update on its own.
 
+The **English/Indonesian** buttons on the Help tab switch the whole panel, not
+just the Help/About text: every static label, tooltip, and every dynamic
+status/progress/error message across every feature follows the same
+`IsHelpEnglish` flag (`UiStrings.cs`'s `UiTextConverter` for static XAML text,
+each ViewModel's own `Tr(en, id)` helper for dynamic messages) - added
+2026-08-17 after a single leftover bilingual dropdown made an otherwise
+all-English panel look inconsistent.
+
 **Cancel**, where available, stops the operation after its *current* step
 finishes (e.g. mid-way through a chain of GP tool calls) - it's cooperative
 cancellation, not an instant kill, so there can be a short delay before the
@@ -240,6 +248,24 @@ produced it) - add if the log alone isn't enough.
   soil - see `WATER_BRIGHTNESS_MAX` in `backend/land_clearing.py`, added
   2026-08-03 after a real result flagged two ponds as "cleared"). *Cancel:
   yes.*
+- **Color Reference Sampler** - collects labeled RGB/ExG field samples to
+  calibrate Land Clearing/Road Extraction's own thresholds against real
+  imagery instead of eyeballing screenshots. Pick a raster layer and a
+  category (Forest canopy, Low vegetation/regrowth, Cleared/bare ground,
+  Felled-tree debris, Road/track, Water/river, Shadow, Heavy equipment/
+  vehicle, Building/roof, Other/unsure - bilingual, same list as everywhere
+  else), click **Start Sampling**, then click points directly on the map;
+  each click reads that pixel's R/G/B/ExG through a long-lived
+  `backend/pixel_sample_server.py` worker process (stdin/stdout protocol -
+  a per-click subprocess would be too slow, and touching
+  `ArcGIS.Core.Data.Raster` directly from C# crashed ArcGIS Pro outright, see
+  `ColorSamplerMapTool.cs`'s own comment) and adds it to an in-memory list.
+  Raster and category are locked for the session once sampling starts - one
+  category per session avoids mixing samples that then need re-splitting
+  before analysis. Click **Stop Sampling** to write the accumulated points
+  out as `ColorReference_<Category>_<timestamp>`, named by category so
+  results from different sessions never overwrite each other in the
+  Contents pane. *Cancel: n/a (map-click driven, not a GP tool chain).*
 - **Road/Trail Extraction** - pulls road/trail centerlines out of the same
   bare-ground signal Land Clearing Detection uses (roads read as "cleared"
   too), skeletonized down to a single line (`skimage.morphology.skeletonize`)
@@ -294,8 +320,9 @@ produced it) - add if the log alone isn't enough.
   pockets like assumed - one blanket constant can't tell "wide road" from
   "wide quarry" without more site-specific tuning than a guess can give
   it. Same status as `land_clearing.py`'s `fresh_color` flag: a knob to
-  try per-site (`--max-width-m` on `detect_roads.py`'s CLI, not yet wired
-  to the DockPane UI), not a default fix - a wandering-but-present line
+  try per-site (**Max road width** on the Road/Trail Extraction section,
+  wired to `detect_roads.py`'s `--max-width-m` CLI flag 2026-08-17 - was
+  CLI-only before that), not a default fix - a wandering-but-present line
   beats producing nothing.
 
   First quantitative accuracy check (2026-08-11), same "buffer method"
@@ -559,6 +586,20 @@ in the DockPane.
   nearest-neighbor matching was already ported, just needed
   `backend/compare_detections.py` (CLI) + `PythonBackendService`/DockPane
   wiring (2026-08-03).
+- The Color Reference Sampler tool above accumulated 721 real labeled
+  samples (2026-08-17), enabling two real-data recalibrations neither
+  threshold had gotten before: `DEFAULT_EXG_THRESHOLD` 18 -> 26 (recall
+  against confirmed bare-ground samples 48.2% -> 92.7%, precision also
+  improved, not a trade-off) and `WATER_BRIGHTNESS_MAX` 90 -> 150 (the old
+  value caught 0 of 61 real water samples that actually needed rescuing
+  from the low-ExG "cleared" mask - real water at this site reads
+  turbid/silty, not the dark clean water 90 assumed; 150 catches 70% of
+  them with zero bare-soil samples wrongly excluded). Re-tested
+  `fresh_color` at the new ExG=26 threshold against the independent
+  Lampunut ground truth the same day: still net negative (F1 73.5% ->
+  57.5%, recall dropped ~19 points cutting real pale/dry bare soil, not
+  just roads/rivers) - stays off by default, consistent with the original
+  finding above.
 
 ## License
 
